@@ -350,16 +350,16 @@ function makeSprites(){
   function farmer(dir,frame){
     const HAT=[
       '.....HHHHHH.....',
-      '....HHHHHHHH....',
+      '....hhHHHHHH....', // crown catches the sun, high-left
       '....HHHHHHHH....',
       '....RRRRRRRR....',
       '..DDDDDDDDDDDD..',
     ];
-    const HEADS={
-      down:['....SSSSSSSS....','....SESSSSES....','....SSSSSSSS....','.....SSSSSS.....'],
-      up:['....KKKKKKKK....','....KKKKKKKK....','....SSSSSSSS....','.....SSSSSS.....'],
-      left:['....SSSSSSSS....','....ESSSSSSS....','....ESSSSSSS....','.....SSSSSS.....'],
-      right:['....SSSSSSSS....','....SSSSSSSE....','....SSSSSSSE....','.....SSSSSS.....'],
+    const HEADS={ // s = skin in brim shadow, k = hair in shadow
+      down:['....ssssssss....','....SESSSSES....','....SSSSSSSS....','.....SSSSSS.....'],
+      up:['....kkkkkkkk....','....KKKKKKKK....','....SSSSSSSS....','.....SSSSSS.....'],
+      left:['....ssssssss....','....ESSSSSSS....','....ESSSSSSS....','.....SSSSSS.....'],
+      right:['....ssssssss....','....SSSSSSSE....','....SSSSSSSE....','.....SSSSSS.....'],
     };
     const BODY=[
       '....TTTTTTTT....',
@@ -369,8 +369,8 @@ function makeSprites(){
       '....PPPPPPPP....',
     ];
     const LEGS= frame? ['.....PP..PP.....','.....B....B.....'] : ['....PP....PP....','....BB....BB....'];
-    return drawMap([...HAT, ...HEADS[dir], ...BODY, ...LEGS],
-      {H:hat, R:hatBand, D:hatBrim, S:skin, E:'#3a2f22', K:hair, T:shirt, A:skin, P:pants, B:boots});
+    return shadeForm(drawMap([...HAT, ...HEADS[dir], ...BODY, ...LEGS],
+      {H:hat, h:'#f2d78c', R:hatBand, D:hatBrim, S:skin, s:'#d9ab82', E:'#3a2f22', K:hair, k:'#4a3424', T:shirt, A:skin, P:pants, B:boots}));
   }
   SPR.player={};
   for(const d of ['down','up','left','right']){ SPR.player[d]=[outline(farmer(d,0)),outline(farmer(d,1))]; }
@@ -379,37 +379,43 @@ function makeSprites(){
   function person(o){
     const S=skin,E='#3a2f22',H=o.hair,Tk=o.top,Pp=o.pants,B=boots,C=o.cap||'#6b5b45',R=o.apron||'#8c6540';
     const HEAD_DOWN={
-      short:['.....HHHHHH.....','....HHHHHHHH....','....HHHHHHHH....','....SSSSSSSS....','....SESSSSES....','....SSSSSSSS....'],
-      long:['.....HHHHHH.....','....HHHHHHHH....','...HHHHHHHHHH...','...HSSSSSSSSH...','...HSESSSESH...','...HSSSSSSSSH...'],
+      short:['.....HHHHHH.....','....HHHHHHHH....','....HhHHHHhH....','....SSSSSSSS....','....SESSSSES....','....SSSSSSSS....'],
+      long:['.....HHHHHH.....','....HhHHHHhH....','...HhHHHHHHhH...','...HSSSSSSSSH...','...HSESSSESH...','...HSSSSSSSSH...'],
       beard:['................','.....HHHHHH.....','....HHHHHHHH....','....SSSSSSSS....','....SESSSSES....','....SSSSSSSS....'],
       cap:['.....CCCCCC.....','....CCCCCCCC....','....CCCCCCCC....','....SSSSSSSS....','....SESSSSES....','....SSSSSSSS....'],
     };
     const CHIN={ short:'.....SSSSSS.....', long:'...HSSSSSSSSH...', beard:'....SHHHHHHS....', cap:'.....SSSSSS.....' };
     const HEAD_UP={
-      short:['.....HHHHHH.....','....HHHHHHHH....','....HHHHHHHH....','....HHHHHHHH....','....HHHHHHHH....','.....SSSSSS.....'],
-      long:['.....HHHHHH.....','....HHHHHHHH....','...HHHHHHHHHH...','...HHHHHHHHHH...','...HHHHHHHHHH...','...HHHHHHHHHH...'],
+      short:['.....HHHHHH.....','....HHHHHHHH....','....HhHHHHhH....','....HHHHHHHH....','....HHHHHHHH....','.....SSSSSS.....'],
+      long:['.....HHHHHH.....','....HhHHHHhH....','...HhHHHHHHhH...','...HhHHHHHHhH...','...HhHHHHHHhH...','...HHHHHHHHHH...'],
       beard:['................','.....HHHHHH.....','....HHHHHHHH....','....HHHHHHHH....','....HHHHHHHH....','.....SSSSSS.....'],
       cap:['.....CCCCCC.....','....CCCCCCCC....','....CCCCCCCC....','....CCCCCCCC....','....CCCCCCCC....','.....SSSSSS.....'],
     };
     const HEAD_SIDE={
       short:['.....HHHHHH.....','....HHHHHHHH....','....HHHHSSSS....','....HHHHSSSE....','....HHHHSSSS....','.....SSSSSS.....'],
-      long:['.....HHHHHH.....','....HHHHHHHH....','...HHHHHHSSSS...','...HHHHHHSSSE...','...HHHHHHSSSS...','...HHHHHHSSS....'],
+      long:['.....HHHHHH.....','....HhHHHHhH....','...HhHHHHSSSS...','...HhHHHHSSSE...','...HhHHHHSSSS...','...HHHHHHSSS....'],
       beard:['................','.....HHHHHH.....','....HHHHSSSS....','....HHHHSSSE....','....HHHHSSSS....','....SSHHHHH.....'],
       cap:['.....CCCCCC.....','....CCCCCCCCCC..','....CCCCSSSS....','....CCCCSSSE....','....CCCCSSSS....','.....SSSSSS.....'],
     };
     const L0=['....PP....PP....','....BB....BB....'];
     const L1=['.....PP..PP.....','.....B....B.....'];
-    function build(head,legs){
-      const body=['....TTTTTTTT....','...TTTTTTTTTT...','...ATTTTTTTTA...','....TTTTTTTT....'];
-      if(o.apron) body.push('....RRRRRRRR....','....RRRRRRRR....');
+    function build(head,legs,view,frame){
+      let body;
+      if(view==='side'){ // narrower torso, one arm that swings front-to-back with the stride
+        body=['.....TTTTTT.....','....TTTTTTTT....',(frame?'...ATTTTTTTT....':'....TTTTTTTTA...'),'....TTTTTTTT....'];
+        if(o.apron) body.push('.....RRRRRR.....','.....RRRRRR.....');
+      } else {
+        body=['....TTTTTTTT....','...TTTTTTTTTT...','...ATTTTTTTTA...','....TTTTTTTT....'];
+        if(o.apron) body.push('....RRRRRRRR....','....RRRRRRRR....');
+      }
       const rows=[...head, CHIN[o.style], ...body, '....PPPPPPPP....', ...legs];
       while(rows.length<16) rows.push('................');
-      return outline(drawMap(rows,{S,H,T:Tk,A:S,P:Pp,B,E,C,R}));
+      return outline(shadeForm(drawMap(rows,{S,H,T:Tk,A:S,P:Pp,B,E,C,R,h:shx(o.hair||o.cap||'#6b5b45',0.72)})));
     }
     return {
-      down:[build(HEAD_DOWN[o.style],L0),build(HEAD_DOWN[o.style],L1)],
-      up:[build(HEAD_UP[o.style],L0),build(HEAD_UP[o.style],L1)],
-      side:[build(HEAD_SIDE[o.style],L0),build(HEAD_SIDE[o.style],L1)],
+      down:[build(HEAD_DOWN[o.style],L0,'down',0),build(HEAD_DOWN[o.style],L1,'down',1)],
+      up:[build(HEAD_UP[o.style],L0,'up',0),build(HEAD_UP[o.style],L1,'up',1)],
+      side:[build(HEAD_SIDE[o.style],L0,'side',0),build(HEAD_SIDE[o.style],L1,'side',1)],
     };
   }
   SPR.villagers={

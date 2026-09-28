@@ -27,6 +27,31 @@ function dither(ctx,w,h,color,density,rng,size=1){
 }
 
 
+// scale a hex color by f (for derived shade/highlight tones)
+function shx(hex,f){
+  const n=parseInt(hex.slice(1),16);
+  const r=clamp(Math.round(((n>>16)&255)*f),0,255), g=clamp(Math.round(((n>>8)&255)*f),0,255), b=clamp(Math.round((n&255)*f),0,255);
+  return `rgb(${r},${g},${b})`;
+}
+// directional form shading: shade bottom/right silhouette edges, catch light on top/left edges
+function shadeForm(src){
+  const w=src.width,h=src.height;
+  const c=cv(w,h), x=c.getContext('2d');
+  x.drawImage(src,0,0);
+  const img=x.getImageData(0,0,w,h), d=img.data;
+  const A=(i,j)=>(i<0||j<0||i>=w||j>=h)?0:d[(j*w+i)*4+3];
+  for(let j=0;j<h;j++)for(let i=0;i<w;i++){
+    const o=(j*w+i)*4;
+    if(d[o+3]<40)continue;
+    let f=1;
+    if(A(i,j+1)<40||A(i+1,j)<40) f=0.80;
+    else if(A(i,j-1)<40||A(i-1,j)<40) f=1.12;
+    if(f!==1){ d[o]=clamp(d[o]*f,0,255); d[o+1]=clamp(d[o+1]*f,0,255); d[o+2]=clamp(d[o+2]*f,0,255); }
+  }
+  x.putImageData(img,0,0);
+  return c;
+}
+
 // dark 1px outline around an opaque sprite for readability
 function outline(src, color='rgba(46,38,26,0.85)'){
   const w=src.width, h=src.height;

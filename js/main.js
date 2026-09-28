@@ -365,6 +365,11 @@ async function runAutotest(){
     if(!document.getElementById('title-art')) throw new Error('no title-art canvas');
     if(!SPR.letterhead||!SPR.letterEnv) throw new Error('letter art missing');
     if(!SPR.grassBySeason||SPR.grassBySeason.length!==4) throw new Error('seasonal grass missing');
+    // character craft (v2.14): player sprite carries multiple skin/shade tones (brim shadow + form shading)
+    { const c=SPR.player.down[0], x=c.getContext('2d');
+      const d=x.getImageData(0,0,c.width,c.height).data; const tones=new Set();
+      for(let o=0;o<d.length;o+=4){ if(d[o+3]>40) tones.add((d[o]>>4)+','+(d[o+1]>>4)+','+(d[o+2]>>4)); }
+      if(tones.size<12) throw new Error('character shading flat: '+tones.size+' tones'); }
     for(const id of ['mara','bram','fern','piet']){
       const vs=SPR.villagers[id];
       if(!vs||!vs.down||!vs.up||!vs.side) throw new Error('villager views missing '+id);
