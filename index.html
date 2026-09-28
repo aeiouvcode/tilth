@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>TILTH — a small valley life</title>
+<meta name="theme-color" content="#f4e9d8">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%23f4e9d8'/><rect x='6' y='9' width='4' height='5' fill='%237a9e5f'/><rect x='7' y='4' width='2' height='6' fill='%235f7a4a'/><rect x='4' y='6' width='3' height='2' fill='%237a9e5f'/><rect x='9' y='6' width='3' height='2' fill='%237a9e5f'/></svg>">
+</head>
+<body>
+<div id="stage">
+  <canvas id="game"></canvas>
+  <div id="hud">
+    <div class="chip" id="hud-day">Spring 1</div>
+    <div class="chip" id="hud-clock">6:00</div>
+    <div class="chip coin" id="hud-coins">0</div>
+    <div class="chip energy"><div id="energy-fill"></div></div>
+  </div>
+  <div id="toolbelt"></div>
+  <div id="toast-wrap"></div>
+  <div id="touch-ui">
+    <div id="stick"><div id="stick-nub"></div></div>
+    <div id="touch-btns">
+      <button id="btn-cycle" aria-label="cycle tool">&#8635;</button>
+      <button id="btn-act" aria-label="use tool">A</button>
+    </div>
+  </div>
+  <div id="menu" class="hidden">
+    <div id="menu-card">
+      <div id="menu-title"></div>
+      <div id="menu-items"></div>
+      <div id="menu-hint">tap outside to close</div>
+    </div>
+  </div>
+  <div id="title-screen">
+    <div id="title-card">
+      <h1>TILTH</h1>
+      <p class="sub">a small valley life</p>
+      <button id="btn-continue" class="tbtn hidden">continue</button>
+      <button id="btn-new" class="tbtn">new valley</button>
+      <p class="hint" id="title-hint">WASD / arrows to walk &middot; E to use tool &middot; 1-7 tools &middot; Q swaps &middot; M mutes</p>
+    </div>
+  </div>
+</div>
+<script src="js/util.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/crops.js"></script>
+<script src="js/world.js"></script>
+<script src="js/input.js"></script>
+<script src="js/render.js"></script>
+<script src="js/game.js"></script>
+<script src="js/music.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
