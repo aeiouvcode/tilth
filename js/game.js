@@ -108,8 +108,8 @@ const Game={
     const g=this.G;
     if(!g.letters.length){ nudge('empty - just moths'); return; }
     const rows=[...g.letters].reverse().map(L=>({
-      label:(L.read?'':'● ')+L.subject, desc:'from '+L.from, price:'',
-      pick:()=>{ L.read=true; closeMenu(); openDialogue(L.from+' — '+L.subject, L.body); }
+      label:(L.read?'':'● ')+L.subject, desc:'from '+L.from, price:'', icon:SPR.letterEnv,
+      pick:()=>{ L.read=true; closeMenu(); openLetter(L.from, L.subject, L.body); }
     }));
     openMenu('mailbox', rows);
   },
@@ -230,7 +230,7 @@ const Game={
   openShop(){
     const g=this.G;
     const rows=Object.values(CROPS).map(def=>({
-      label:`${def.seed}`, desc:`${def.days}d, sells ${def.sell}g`, price:`${def.seedCost}g`,
+      label:`${def.seed}`, desc:`${def.days}d, sells ${def.sell}g`, price:`${def.seedCost}g`, icon:SPR.crop(def,3),
       pick:()=>{ if(g.coins>=def.seedCost){ g.coins-=def.seedCost; g.seeds[def.id]=(g.seeds[def.id]||0)+1; toast(`+1 ${def.seed}`); chime(880); this.refreshMenu(); } else nudge('not enough coin'); }
     }));
     openMenu(`Mara's seeds — you hold ${g.coins}g`, rows);
@@ -240,7 +240,7 @@ const Game={
     const owned=Object.entries(g.seeds).filter(([id,n])=>n>0);
     if(!owned.length){ nudge('no seeds - visit Mara'); return; }
     const rows=owned.map(([id,n])=>({
-      label:CROPS[id].name, desc:`${CROPS[id].days} days`, price:`x${n}`,
+      label:CROPS[id].name, desc:`${CROPS[id].days} days`, price:`x${n}`, icon:SPR.crop(CROPS[id],3),
       pick:()=>{ this.plantSeed(x,y,id); closeMenu(); }
     }));
     openMenu('plant which seed?', rows);
@@ -250,7 +250,7 @@ const Game={
     const items=Object.entries(g.produce).filter(([id,n])=>n>0);
     if(!items.length){ nudge('crate is empty - harvest or forage first'); return; }
     const rows=items.map(([id,n])=>({
-      label:ITEMS[id].name, desc:`ships for ${ITEMS[id].sell}g each`, price:`x${n}`,
+      label:ITEMS[id].name, desc:`ships for ${ITEMS[id].sell}g each`, price:`x${n}`, icon:SPR.item[id]||SPR.forage[id]||(CROPS[id]?SPR.crop(CROPS[id],3):null),
       pick:()=>{
         const val=ITEMS[id].sell*n;
         g.pendingSale+=val; g.produce[id]=0; g.shipped+=n;
@@ -432,9 +432,9 @@ const Game={
     const rows=[];
     const loved=this.LOVED[id];
     if((g.produce[loved]||0)>0&&!g.giftsToday[id]){
-      rows.push({label:`give ${ITEMS[loved].name}`, desc:'they would love this', price:'x1', pick:()=>{ closeMenu(); this.giftTo(id); }});
+      rows.push({label:`give ${ITEMS[loved].name}`, desc:'they would love this', price:'x1', icon:SPR.item[loved]||SPR.forage[loved]||(CROPS[loved]?SPR.crop(CROPS[loved],3):null), pick:()=>{ closeMenu(); this.giftTo(id); }});
     }
-    openDialogue(title, text, rows);
+    openDialogue(title, text, rows, id);
   },
   // daily routines: hour -> waypoint (everyone gathers at the well 5-8pm)
   SCHEDULES:{
@@ -449,6 +449,29 @@ const Game={
     for(const s of sch){ if(h>=s[0]) wp=s; }
     return wp;
   },
+  findPath(sx,sy,tx,ty){
+    // BFS over walkable tiles -> array of [x,y] tiles (start included), or null
+    const g=this.G, key=(x,y)=>y*W+x;
+    if(sx===tx&&sy===ty) return [[sx,sy]];
+    const prev=new Map([[key(sx,sy),null]]), q=[[sx,sy]];
+    while(q.length){
+      const [cx,cy]=q.shift();
+      if(cx===tx&&cy===ty){
+        const path=[]; let cur=[tx,ty];
+        while(cur){ path.unshift(cur); cur=prev.get(key(cur[0],cur[1])); }
+        return path;
+      }
+      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const nx=cx+dx, ny=cy+dy;
+        if(nx<0||ny<0||nx>=W||ny>=H) continue;
+        const k=key(nx,ny);
+        if(prev.has(k)) continue;
+        if(SOLID.has(g.grid[k])) continue;
+        prev.set(k,[cx,cy]); q.push([nx,ny]);
+      }
+    }
+    return null;
+  },
   updateNpcs(dt){
     const g=this.G;
     for(const id of ['mara','bram','fern','piet']){
@@ -456,12 +479,25 @@ const Game={
       const wp=this.npcWaypoint(id);
       const gx=wp[1]*TILE, gy=wp[2]*TILE;
       if(Math.hypot(n.x-gx,n.y-gy)>TILE*0.8){
-        // en route: walk to the waypoint
-        const dx=gx-n.x, dy=gy-n.y, m=Math.hypot(dx,dy);
+        // en route: BFS path to the waypoint (recomputed when the schedule moves it)
+        const goalKey=gx+','+gy;
+        if(n.pathGoal!==goalKey){
+          n.pathGoal=goalKey;
+          n.path=this.findPath(Math.floor(n.x/TILE),Math.floor(n.y/TILE),Math.floor(gx/TILE),Math.floor(gy/TILE));
+        }
+        let ax=gx, ay=gy;
+        if(n.path&&n.path.length){
+          const nt=n.path[0];
+          ax=nt[0]*TILE+TILE/2; ay=nt[1]*TILE+TILE/2;
+          if(Math.hypot(n.x-ax,n.y-ay)<3){ n.path.shift(); if(n.path.length){ ax=n.path[0][0]*TILE+TILE/2; ay=n.path[0][1]*TILE+TILE/2; } }
+        }
+        const dx=ax-n.x, dy=ay-n.y, m=Math.hypot(dx,dy)||1;
         n.x+=dx/m*26*dt/1000; n.y+=dy/m*26*dt/1000;
         n.tx=gx; n.ty=gy; n.flip=dx<0; n.pause=1;
+        n.moving=true; n.dir=Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down');
       } else if(Math.hypot(n.tx-n.x,n.ty-n.y)<2){
         // settled: small idle wander near the waypoint
+        n.moving=false;
         n.pause-=dt/1000;
         if(n.pause<=0&&Math.random()<dt/1000/7){
           const nx=clamp(gx+(Math.random()*96-48),TILE,(W-2)*TILE), ny=clamp(gy+(Math.random()*64-32),TILE,(H-2)*TILE);
@@ -470,6 +506,7 @@ const Game={
       } else {
         const dx=n.tx-n.x, dy=n.ty-n.y, m=Math.hypot(dx,dy);
         n.x+=dx/m*10*dt/1000; n.y+=dy/m*10*dt/1000;
+        n.moving=true; n.dir=Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down');
       }
     }
   },

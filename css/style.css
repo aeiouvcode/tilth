@@ -45,12 +45,22 @@ body { font-family: Georgia, 'Times New Roman', serif; }
 .menu-row:hover { background:#efe5cf; border-radius:6px; }
 .menu-row .price { margin-left:auto; color:#7a6a4a; font-size:13px; white-space:nowrap; }
 .menu-row .nm { font-size:14px; color:#4a3f2e; }
+.menu-row .ic { width:26px; height:26px; image-rendering:pixelated; flex:none; }
 .menu-row .ds { font-size:11px; color:#9a8a6a; }
 #menu-hint { margin-top:10px; font-size:11px; color:#a8997c; text-align:center; }
+
+/* letters: aged paper */
+#menu-card.paper { background:#f4ead2; border-color:#cbb98f; }
+.letterhead { width:192px; image-rendering:pixelated; display:block; margin:0 auto 4px; }
+.letter-sub { text-align:center; font-size:12px; letter-spacing:2px; color:#8a7550; text-transform:lowercase; margin-bottom:10px; }
+.letter-body { padding:2px 6px 10px; font-size:14px; color:#4a3f2e; line-height:1.65; }
+.letter-sig { display:flex; align-items:center; gap:8px; justify-content:flex-end; padding:2px 6px; font-size:13px; color:#7a6a4a; font-style:italic; }
+.letter-sig canvas { width:26px; height:26px; image-rendering:pixelated; border-radius:6px; }
 
 /* title */
 #title-screen { position:absolute; inset:0; z-index:30; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,#f4e3c2 0%, #e8d3ae 55%, #cfb98d 100%); }
 #title-card { text-align:center; color:#4a3f2e; }
+#title-art { width:min(340px, 82vw); image-rendering:pixelated; border-radius:10px; margin-bottom:18px; box-shadow:0 8px 28px #7a68441f, 0 2px 0 #b99f6e55; }
 #title-card h1 { font-size:52px; letter-spacing:14px; font-weight:normal; text-indent:14px; }
 #title-card .sub { font-size:14px; color:#8a7550; margin:6px 0 26px; font-style:italic; }
 .tbtn { display:block; margin:10px auto; width:200px; padding:10px; font-family:inherit; font-size:15px; letter-spacing:2px; background:#f7efe0; color:#4a3f2e; border:1px solid #b99f6e; border-radius:24px; cursor:pointer; }

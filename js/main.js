@@ -38,6 +38,7 @@ function openMenu(title, rows){
   for(const r of rows){
     const d=document.createElement('div'); d.className='menu-row';
     d.innerHTML=`<div><div class="nm"></div><div class="ds"></div></div><div class="price"></div>`;
+    if(r.icon){ const cv2=document.createElement('canvas'); cv2.width=r.icon.width; cv2.height=r.icon.height; cv2.getContext('2d').drawImage(r.icon,0,0); cv2.className='ic'; d.insertBefore(cv2, d.firstChild); }
     d.querySelector('.nm').textContent=r.label;
     d.querySelector('.ds').textContent=r.desc||'';
     d.querySelector('.price').textContent=r.price||'';
@@ -46,7 +47,34 @@ function openMenu(title, rows){
   }
   m.classList.remove('hidden');
 }
-function closeMenu(){ MENU_OPEN=false; document.getElementById('menu').classList.add('hidden'); }
+function closeMenu(){ MENU_OPEN=false; document.getElementById('menu').classList.add('hidden'); document.getElementById('menu-card').classList.remove('paper'); }
+
+// ---------- letters ----------
+function openLetter(from, subject, body){
+  MENU_OPEN=true;
+  document.getElementById('menu-card').classList.add('paper');
+  const titleEl=document.getElementById('menu-title'); titleEl.textContent='';
+  const head=document.createElement('canvas'); head.width=96; head.height=24;
+  head.getContext('2d').drawImage(SPR.letterhead,0,0);
+  head.className='letterhead';
+  titleEl.appendChild(head);
+  const wrap=document.getElementById('menu-items'); wrap.innerHTML='';
+  const sub=document.createElement('div'); sub.className='letter-sub'; sub.textContent=subject;
+  wrap.appendChild(sub);
+  const p=document.createElement('div'); p.className='letter-body'; p.textContent=body;
+  wrap.appendChild(p);
+  const pid=Object.keys(Game.NPCS||{}).find(k=>Game.NPCS[k].name===from);
+  const sig=document.createElement('div'); sig.className='letter-sig';
+  if(pid&&SPR.portraits[pid]){
+    const img=document.createElement('canvas'); img.width=24; img.height=24;
+    img.getContext('2d').drawImage(SPR.portraits[pid],0,0);
+    sig.appendChild(img);
+  }
+  const nm=document.createElement('span'); nm.textContent='— '+from;
+  sig.appendChild(nm);
+  wrap.appendChild(sig);
+  document.getElementById('menu').classList.remove('hidden');
+}
 document.getElementById('menu').addEventListener('click',e=>{ if(e.target.id==='menu')closeMenu(); });
 
 // ---------- HUD ----------
@@ -76,10 +104,23 @@ function updateBelt(){
 }
 
 // ---------- dialogue ----------
-function openDialogue(name, text, extraRows){
+function openDialogue(name, text, extraRows, portraitId){
   MENU_OPEN=true;
   const m=document.getElementById('menu');
-  document.getElementById('menu-title').textContent=name;
+  const titleEl=document.getElementById('menu-title');
+  titleEl.textContent='';
+  if(portraitId&&SPR.portraits[portraitId]){
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px;justify-content:flex-start;';
+    const img=document.createElement('canvas'); img.width=24; img.height=24;
+    img.getContext('2d').drawImage(SPR.portraits[portraitId],0,0);
+    img.style.cssText='width:40px;height:40px;image-rendering:pixelated;border-radius:8px;';
+    const nm=document.createElement('span'); nm.textContent=name;
+    row.appendChild(img); row.appendChild(nm);
+    titleEl.appendChild(row);
+  } else {
+    titleEl.textContent=name;
+  }
   const wrap=document.getElementById('menu-items'); wrap.innerHTML='';
   const p=document.createElement('div');
   p.style.cssText='padding:8px 4px;font-size:14px;color:#4a3f2e;line-height:1.5;font-style:italic;';
@@ -88,6 +129,7 @@ function openDialogue(name, text, extraRows){
   for(const r of (extraRows||[])){
     const d=document.createElement('div'); d.className='menu-row';
     d.innerHTML=`<div><div class="nm"></div><div class="ds"></div></div><div class="price"></div>`;
+    if(r.icon){ const cv2=document.createElement('canvas'); cv2.width=r.icon.width; cv2.height=r.icon.height; cv2.getContext('2d').drawImage(r.icon,0,0); cv2.className='ic'; d.insertBefore(cv2, d.firstChild); }
     d.querySelector('.nm').textContent=r.label;
     d.querySelector('.ds').textContent=r.desc||'';
     d.querySelector('.price').textContent=r.price||'';
@@ -163,7 +205,9 @@ function boot(){
   if(qs.get('touch')) document.getElementById('touch-ui').style.display='block';
   document.getElementById('btn-new').addEventListener('click',()=>start(false));
   document.getElementById('btn-continue').addEventListener('click',()=>start(true));
+  drawTitleArt();
   if(qs.get('autotest')){ start(false); runAutotest(); return; }
+  if(!qs.get('shot')&&!qs.get('fps')) drawTitleArt();
   if(qs.get('fps')){
     start(false);
     // synchronous render-cost benchmark: avg ms per full frame over 300 frames
@@ -221,8 +265,18 @@ function boot(){
       g.produce.sunbean=1; g.friendship.mara=6;
       setTimeout(()=>Game.talkTo('mara'), 600);
     }
-    if(qs.get('shot')==='mail'){ g.player.x=9.5*TILE; g.player.y=8.5*TILE; g.player.dir='right'; g.letters.push({id:'welcome',from:'Mara',subject:'welcome to the valley',body:'x',read:false}); }
+    if(qs.get('shot')==='mail'){ g.player.x=9.5*TILE; g.player.y=8.5*TILE; g.player.dir='right';
+      const wl=Game.LETTERS.find(L=>L.id==='welcome'); g.letters.push({id:'welcome',from:wl.from,subject:wl.subject,body:wl.body,read:false});
+      setTimeout(()=>openLetter(wl.from,wl.subject,wl.body),300); }
     const sp=qs.get('season'); if(sp!==null&&sp!==''){ g.day=+sp*7+1; g.seasonCached=Game.season(); }
+    if(qs.get('shot')==='villagers'){
+      g.player.x=24.5*TILE; g.player.y=17.5*TILE; g.player.dir='up';
+      Game.updateNpcs=()=>{};
+      const V=[['mara',21,13,'down'],['bram',24,13,'up'],['fern',27,13,'left'],['piet',30,13,'right']];
+      for(const [id,vx,vy,vd] of V){ const n=g[id]; n.x=vx*TILE; n.y=vy*TILE; n.dir=vd; n.moving=true; n.flip=vd==='left'; }
+    }
+    if(qs.get('shot')==='shop'){ setTimeout(()=>Game.openShop(),300); }
+    if(qs.get('shot')==='crate'){ g.produce={sunbean:3,duskcarp:1,morel:2,emberquartz:1}; setTimeout(()=>Game.openCrateMenu(),300); }
     if(qs.get('shot')==='pond'){
       g.player.x=10.5*TILE; g.player.y=23.5*TILE; g.player.dir='down';
       Game.castRod({x:10,y:24});
@@ -235,6 +289,46 @@ function boot(){
   if(!qs.get('shot')) Game.newGame();
   requestAnimationFrame(loop);
 }
+function drawTitleArt(){
+  const cv=document.getElementById('title-art'); if(!cv)return;
+  const x=cv.getContext('2d'), W2=120, H2=68;
+  // dawn sky bands
+  const bands=['#f6d9b0','#f2cba0','#e8bd9a','#d8b394','#c8ae90'];
+  bands.forEach((b,i)=>{ x.fillStyle=b; x.fillRect(0,i*8,W2,8); });
+  // low sun + glow
+  x.fillStyle='#f4e2b8'; x.beginPath(); x.arc(88,26,7,0,7); x.fill();
+  x.fillStyle='rgba(244,226,184,0.35)'; x.beginPath(); x.arc(88,26,11,0,7); x.fill();
+  // clouds
+  x.fillStyle='rgba(247,239,224,0.85)';
+  x.beginPath(); x.ellipse(28,14,9,3.5,0,0,7); x.fill();
+  x.beginPath(); x.ellipse(58,9,7,2.8,0,0,7); x.fill();
+  // far tree line
+  x.fillStyle='#7a9a68';
+  for(let i=0;i<14;i++){ const bx=i*9+(i%2)*3; x.beginPath(); x.arc(bx,40,6+(i%3),0,7); x.fill(); }
+  // ground
+  x.fillStyle='#8fb36b'; x.fillRect(0,42,W2,H2-42);
+  x.fillStyle='#87a863'; x.fillRect(0,42,W2,3);
+  // pond bottom-left with glint
+  x.fillStyle='#7fb6c9'; x.beginPath(); x.ellipse(14,60,13,7,0,0,7); x.fill();
+  x.fillStyle='#9ccfda'; x.fillRect(6,58,4,1); x.fillRect(14,62,5,1);
+  // field rows bottom-right with crops
+  for(let r2=0;r2<3;r2++){
+    x.fillStyle='#9c7454'; x.fillRect(74+r2*2,50+r2*6,38,4);
+    for(let c2=0;c2<6;c2++){
+      x.fillStyle='#5f7a4a'; x.fillRect(78+r2*2+c2*6,48+r2*6,2,4);
+      x.fillStyle='#e0d389'; x.fillRect(78+r2*2+c2*6,47+r2*6,2,2);
+    }
+  }
+  // farmhouse from the game's own sprite
+  if(SPR.house) x.drawImage(SPR.house, 26, 26, 64, 48);
+  // blossom tree right
+  if(SPR.treesB&&SPR.treesB[0]) x.drawImage(SPR.treesB[0], 96, 22, 40, 44);
+  // cat on the lane
+  if(SPR.cat) x.drawImage(SPR.cat, 58, 50, 12, 12);
+  // dirt lane
+  x.fillStyle='#c9b184'; x.fillRect(0,52,30,5);
+}
+
 function start(useSave){
   if(useSave){ if(!Game.load()) Game.newGame(); } else Game.newGame();
   document.getElementById('title-screen').classList.add('hidden');
@@ -266,6 +360,21 @@ async function runAutotest(){
   const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
   // place player next to starter soil patch (20..25, 13..16)
   g.player.x=19.5*TILE; g.player.y=13.5*TILE; g.player.dir='right';
+  step(()=>{
+    for(const id of ['mara','bram','fern','piet']) if(!SPR.portraits[id]) throw new Error('missing portrait '+id);
+    if(!document.getElementById('title-art')) throw new Error('no title-art canvas');
+    if(!SPR.letterhead||!SPR.letterEnv) throw new Error('letter art missing');
+    if(!SPR.grassBySeason||SPR.grassBySeason.length!==4) throw new Error('seasonal grass missing');
+    for(const id of ['mara','bram','fern','piet']){
+      const vs=SPR.villagers[id];
+      if(!vs||!vs.down||!vs.up||!vs.side) throw new Error('villager views missing '+id);
+      for(const v of ['down','up','side']) if(vs[v].length!==2||vs[v][0].width!==18) throw new Error('villager frames bad '+id+'.'+v);
+    }
+    for(const gs of SPR.grassBySeason) if(gs.length!==5) throw new Error('grass set size '+gs.length);
+    const w=SPR.grassBySeason[3][0].getContext('2d').getImageData(8,8,1,1).data;
+    const s0=SPR.grassBySeason[0][0].getContext('2d').getImageData(8,8,1,1).data;
+    if(w[0]===s0[0]&&w[1]===s0[1]&&w[2]===s0[2]) throw new Error('winter grass identical to spring');
+  },'art assets (portraits + title + seasonal grass)');
   step(()=>{ // hoe new soil at (26,13)
     g.player.dir='right';
     const before=Game.tileAt(26,13);
@@ -389,6 +498,15 @@ async function runAutotest(){
     for(let i=0;i<300;i++){ g.fern.tx=g.fern.x; g.fern.ty=g.fern.y; Game.updateNpcs(100);
       if(SOLID.has(Game.tileAt(Math.floor(g.fern.tx/TILE),Math.floor(g.fern.ty/TILE)))) throw new Error('fern targeted solid'); }
   },'villagers');
+  step(()=>{ // pathfinding: fence detour, all-walkable, smoke test on a villager
+    const path=Game.findPath(10,20,30,20);
+    if(!path) throw new Error('no path across farm');
+    for(const [px2,py2] of path) if(SOLID.has(g.grid[py2*W+px2])) throw new Error('path crosses solid '+px2+','+py2);
+    if(path.length<=20) throw new Error('path did not detour the fence');
+    g.bram.x=30*TILE; g.bram.y=30*TILE; g.bram.pathGoal=null;
+    Game.updateNpcs(50);
+    if(!Array.isArray(g.bram.path)) throw new Error('villager path not set');
+  },'pathfinding');
   step(()=>{ // letters arrive on schedule; mailbox opens
     g=Game.G;
     Game.sleep(); g=Game.G; // -> day>=2 welcome letter

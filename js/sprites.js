@@ -19,23 +19,34 @@ function makeSprites(){
     cream:'#f7efe0', ink:'#4a3f2e',
   };
 
-  // ---------- grass ----------
-  function grassTile(seed){
+  // ---------- grass (per-season sets, like the trees) ----------
+  // [base1, base2, patch1, patch2, dark-dither, light-dither, flower1, flower2, backdrop]
+  const GRASS_PALS={
+    spring:['#8fb36b','#85a961','rgba(110,140,84,0.35)','rgba(157,192,122,0.30)','#7b9c58','#9dc07a','#f0e2b8','#e8b7c2'],
+    summer:['#7ba457','#71994e','rgba(96,128,72,0.35)','rgba(140,178,104,0.30)','#678c48','#8db06a','#f4e8c0','#e8b7c2'],
+    autumn:['#a89e58','#9c9350','rgba(140,128,70,0.35)','rgba(190,176,100,0.30)','#8a8044','#c0b468','#e8d8a0','#d89a6a'],
+    winter:['#e2eaf1','#dae4ed','rgba(185,200,215,0.30)','rgba(245,250,255,0.45)','#c2ceda','#f6fafd','#ffffff','#ffffff'],
+  };
+  function grassTile(seed,pal){
     const r=mulberry32(seed); const c=cv(TILE,TILE), x=c.getContext('2d');
-    px(x,0,0,16,16, r()<0.5?P.grass:P.grass2);
+    const [g1,g2,gp1,gp2,gd,gl,gf1,gf2]=pal;
+    px(x,0,0,16,16, r()<0.5?g1:g2);
     // large soft tonal patches first
     for(let k=0;k<2;k++){
-      x.fillStyle=r()<0.5?'rgba(110,140,84,0.35)':'rgba(157,192,122,0.30)';
+      x.fillStyle=r()<0.5?gp1:gp2;
       const bx=Math.floor(r()*11), by=Math.floor(r()*11);
       x.fillRect(bx,by,5,3); x.fillRect(bx+1,by-1,3,5);
     }
-    dither(x,16,16,P.grassD,0.05,r);
-    dither(x,16,16,'#9dc07a',0.04,r);
-    if(r()<0.35){ px(x,2+Math.floor(r()*11),2+Math.floor(r()*11),1,1, r()<0.5?P.grassFl:P.grassFl2); }
-    if(r()<0.25){ const gx=2+Math.floor(r()*10), gy=4+Math.floor(r()*8); px(x,gx,gy,1,2,P.grassD); px(x,gx+1,gy+1,1,1,P.grassD); }
+    dither(x,16,16,gd,0.05,r);
+    dither(x,16,16,gl,0.04,r);
+    if(r()<0.35){ px(x,2+Math.floor(r()*11),2+Math.floor(r()*11),1,1, r()<0.5?gf1:gf2); }
+    if(r()<0.25){ const gx=2+Math.floor(r()*10), gy=4+Math.floor(r()*8); px(x,gx,gy,1,2,gd); px(x,gx+1,gy+1,1,1,gd); }
     return c;
   }
-  SPR.grass=[grassTile(11),grassTile(22),grassTile(33),grassTile(44),grassTile(55)];
+  const SNamesG=['spring','summer','autumn','winter'];
+  SPR.grassBySeason=SNamesG.map(n=>[grassTile(11,GRASS_PALS[n]),grassTile(22,GRASS_PALS[n]),grassTile(33,GRASS_PALS[n]),grassTile(44,GRASS_PALS[n]),grassTile(55,GRASS_PALS[n])]);
+  SPR.grass=SPR.grassBySeason[0];
+  SPR.grassBg={spring:'#8fb36b',summer:'#7ba457',autumn:'#a89e58',winter:'#e2eaf1'};
 
   // ---------- soil ----------
   function soilTile(wet){
@@ -110,18 +121,32 @@ function makeSprites(){
     }
     const [L1,L2,L3]=pal;
     const blobs=[[20,16,13],[11,22,9],[29,22,9],[20,27,10],[7,17,6],[33,17,6]];
+    // pass 1: coverage bitmap, so overlapping blobs shade as one canopy
+    const cov=new Uint8Array(40*44);
     for(const [bx,by,br] of blobs){
       for(let j=-br;j<=br;j++)for(let i=-br;i<=br;i++){
         const d=i*i+j*j;
         const edge=br*br*(0.82+hash2(bx+i,by+j,kind==='blossom'?71:31)*0.35);
-        if(d>edge)continue;
-        const h=hash2(bx+i,by+j,kind==='blossom'?7:3);
-        x.fillStyle=h<0.55?L1:(h<0.85?L2:L3);
-        x.fillRect(bx+i,by+j,1,1);
+        if(d<=edge)cov[(by+j)*40+(bx+i)]=1;
       }
     }
-    x.fillStyle=L3;
-    for(let k=0;k<40;k++){const ix=Math.floor(r()*26)+4, iy=Math.floor(r()*14)+4; if(r()<0.6)x.fillRect(ix,iy,1,1);}
+    // pass 2: one canopy-space light gradient (sun high left), dapple, dark bottom rim
+    for(let gy=0;gy<44;gy++)for(let gx=0;gx<40;gx++){
+      if(!cov[gy*40+gx])continue;
+      const nx=(gx-20)/20, ny=(gy-14)/15;
+      const light=-(nx*0.55)-(ny*0.95);
+      let col=L1;
+      if(light>0.55)col=L3;
+      else if(light<-0.10)col=L2;
+      const h=hash2(gx,gy,kind==='blossom'?7:3);
+      if(h>0.94&&col!==L2)col=col===L3?L1:L3; // sparse sun-dapple
+      else if(h<0.05&&col===L1)col=L2;        // sparse deep fleck
+      if(gy+1<44&&!cov[(gy+1)*40+gx])col=L2;  // crisp underside rim
+      x.fillStyle=col;
+      x.fillRect(gx,gy,1,1);
+    }
+    // trunk visible below the canopy
+    px(x,17,38,6,5,P.trunk); px(x,17,38,2,5,P.trunkD);
     return c;
   }
   const SNames=['spring','summer','autumn','winter'];
@@ -268,6 +293,57 @@ function makeSprites(){
   SPR.crop=(def,stage)=>cropSprite(def,stage);
   SPR.cropReady=(def)=>{ const c=SPR.crop(def,3); return c; };
 
+  // ---------- small item icons (menus): fish + ores ----------
+  SPR.item={};
+  function fishIcon(body, belly, fin){
+    const c=cv(16,16), x=c.getContext('2d');
+    px(x,4,7,8,5,body); px(x,5,6,6,1,body); // body
+    px(x,5,9,6,2,belly); // belly
+    px(x,1,8,3,3,fin); px(x,0,7,1,1,fin); px(x,0,12,1,1,fin); // tail
+    px(x,12,6,3,2,fin); // dorsal
+    px(x,10,8,1,1,'#2e2620'); // eye
+    px(x,6,7,2,1,'rgba(255,255,255,0.35)'); // glint
+    return c;
+  }
+  SPR.item.minnow=fishIcon('#a8bcc4','#d0dce0','#8aa4b0');
+  SPR.item.dace=fishIcon('#7a9ab0','#b8ccd8','#5f8296');
+  SPR.item.duskcarp=fishIcon('#5a5a74','#8a8aa0','#c96f4a');
+  function oreIcon(rock, crystal, glint){
+    const c=cv(16,16), x=c.getContext('2d');
+    px(x,2,9,12,6,'#6d6b78'); px(x,2,9,12,2,'#54525e'); px(x,2,9,3,6,'#54525e'); // rock base
+    px(x,5,4,3,7,crystal); px(x,9,5,3,6,crystal); // crystals
+    px(x,6,5,1,3,glint); px(x,10,6,1,2,glint); // glints
+    return c;
+  }
+  SPR.item.pitstone=oreIcon('#6d6b78','#9aa3ad','#c4ccd4');
+
+  // ---------- letter art: letterhead motif + envelope icon ----------
+  (function(){
+    const c=cv(96,24), x=c.getContext('2d');
+    // vine: stem with leaf pairs, reads at small scale
+    x.fillStyle='#7b9c58';
+    for(let i=6;i<90;i+=4) x.fillRect(i,12,3,1);
+    for(let i=8;i<88;i+=8){
+      x.fillRect(i,9,2,3); x.fillRect(i+1,8,2,2); // leaf up
+      x.fillRect(i+4,13,2,3); x.fillRect(i+5,14,2,2); // leaf down
+    }
+    // wax seal center
+    x.fillStyle='#b35a3e'; x.beginPath(); x.arc(48,12,6,0,7); x.fill();
+    x.fillStyle='#8f4530'; x.beginPath(); x.arc(49,13,5,0,7); x.fill();
+    x.fillStyle='#d98a6a'; x.fillRect(46,9,2,2); // seal glint
+    x.fillStyle='#f7efe0'; x.font='7px serif'; x.fillText('T',45.5,14.5); // valley mark
+    SPR.letterhead=c;
+    const e=cv(16,16), ex=e.getContext('2d');
+    px(ex,2,4,12,9,'#f4ead2'); px(ex,2,4,12,1,'#d9c9a8'); px(ex,2,12,12,1,'#d9c9a8');
+    px(ex,2,4,1,9,'#d9c9a8'); px(ex,13,4,1,9,'#d9c9a8');
+    // flap
+    for(let i=0;i<6;i++){ ex.fillStyle='#e8dcc0'; ex.fillRect(3+i,5+i,10-2*i,1); }
+    px(ex,6,8,4,4,'#b35a3e'); // wax blob
+    SPR.letterEnv=e;
+  })();
+  SPR.item.emberquartz=oreIcon('#6d6b78','#e8862d','#f7c948');
+  SPR.item.moondrop=oreIcon('#6d6b78','#bcd8e8','#f0faff');
+
   // ---------- player: straw-hat farmer, 4 dirs x 2 walk frames ----------
   const skin='#eec39a', hair='#5b4130', shirt='#7a9e5f',
         pants='#6b5b45', boots='#4a3f2e', hat='#e0bd6b', hatBand='#b35a3e', hatBrim='#c9a44e';
@@ -299,28 +375,51 @@ function makeSprites(){
   SPR.player={};
   for(const d of ['down','up','left','right']){ SPR.player[d]=[outline(farmer(d,0)),outline(farmer(d,1))]; }
 
-  // ---------- NPC shopkeeper "Mara" ----------
-  (function(){
-    const S=skin,H='#8a4f38',T='#b0698a',Pp='#7a6a4a',B=boots;
-    SPR.npc=outline(drawMap([
-      '.....HHHHHH.....',
-      '....HHHHHHHH....',
-      '...HHHHHHHHHH...',
-      '...HSSSSSSSSH...',
-      '...HSESSSESH....',
-      '....SSSSSSSS....',
-      '....TTTTTTTT....',
-      '...TTTTTTTTTT...',
-      '...STTTTTTTTS...',
-      '....TTTTTTTT....',
-      '....PPPPPPPP....',
-      '....PPP..PPP....',
-      '....PP....PP....',
-      '....B......B....',
-      '................',
-      '................',
-    ],{S,H,T,P:Pp,B,E:'#3a2f22'}));
-  })();
+  // ---------- villagers: parametric 3-view, 2-frame walk sprites ----------
+  function person(o){
+    const S=skin,E='#3a2f22',H=o.hair,Tk=o.top,Pp=o.pants,B=boots,C=o.cap||'#6b5b45',R=o.apron||'#8c6540';
+    const HEAD_DOWN={
+      short:['.....HHHHHH.....','....HHHHHHHH....','....HHHHHHHH....','....SSSSSSSS....','....SESSSSES....','....SSSSSSSS....'],
+      long:['.....HHHHHH.....','....HHHHHHHH....','...HHHHHHHHHH...','...HSSSSSSSSH...','...HSESSSESH...','...HSSSSSSSSH...'],
+      beard:['................','.....HHHHHH.....','....HHHHHHHH....','....SSSSSSSS....','....SESSSSES....','....SSSSSSSS....'],
+      cap:['.....CCCCCC.....','....CCCCCCCC....','....CCCCCCCC....','....SSSSSSSS....','....SESSSSES....','....SSSSSSSS....'],
+    };
+    const CHIN={ short:'.....SSSSSS.....', long:'...HSSSSSSSSH...', beard:'....SHHHHHHS....', cap:'.....SSSSSS.....' };
+    const HEAD_UP={
+      short:['.....HHHHHH.....','....HHHHHHHH....','....HHHHHHHH....','....HHHHHHHH....','....HHHHHHHH....','.....SSSSSS.....'],
+      long:['.....HHHHHH.....','....HHHHHHHH....','...HHHHHHHHHH...','...HHHHHHHHHH...','...HHHHHHHHHH...','...HHHHHHHHHH...'],
+      beard:['................','.....HHHHHH.....','....HHHHHHHH....','....HHHHHHHH....','....HHHHHHHH....','.....SSSSSS.....'],
+      cap:['.....CCCCCC.....','....CCCCCCCC....','....CCCCCCCC....','....CCCCCCCC....','....CCCCCCCC....','.....SSSSSS.....'],
+    };
+    const HEAD_SIDE={
+      short:['.....HHHHHH.....','....HHHHHHHH....','....HHHHSSSS....','....HHHHSSSE....','....HHHHSSSS....','.....SSSSSS.....'],
+      long:['.....HHHHHH.....','....HHHHHHHH....','...HHHHHHSSSS...','...HHHHHHSSSE...','...HHHHHHSSSS...','...HHHHHHSSS....'],
+      beard:['................','.....HHHHHH.....','....HHHHSSSS....','....HHHHSSSE....','....HHHHSSSS....','....SSHHHHH.....'],
+      cap:['.....CCCCCC.....','....CCCCCCCCCC..','....CCCCSSSS....','....CCCCSSSE....','....CCCCSSSS....','.....SSSSSS.....'],
+    };
+    const L0=['....PP....PP....','....BB....BB....'];
+    const L1=['.....PP..PP.....','.....B....B.....'];
+    function build(head,legs){
+      const body=['....TTTTTTTT....','...TTTTTTTTTT...','...ATTTTTTTTA...','....TTTTTTTT....'];
+      if(o.apron) body.push('....RRRRRRRR....','....RRRRRRRR....');
+      const rows=[...head, CHIN[o.style], ...body, '....PPPPPPPP....', ...legs];
+      while(rows.length<16) rows.push('................');
+      return outline(drawMap(rows,{S,H,T:Tk,A:S,P:Pp,B,E,C,R}));
+    }
+    return {
+      down:[build(HEAD_DOWN[o.style],L0),build(HEAD_DOWN[o.style],L1)],
+      up:[build(HEAD_UP[o.style],L0),build(HEAD_UP[o.style],L1)],
+      side:[build(HEAD_SIDE[o.style],L0),build(HEAD_SIDE[o.style],L1)],
+    };
+  }
+  SPR.villagers={
+    mara:person({style:'long',hair:'#8a4f38',top:'#b0698a',pants:'#7a6a4a'}),
+    bram:person({style:'beard',hair:'#c9c2b8',top:'#7a6a4a',pants:'#5b5148'}),
+    fern:person({style:'short',hair:'#a85f38',top:'#7a8a5f',pants:'#5f5648'}),
+    piet:person({style:'cap',cap:'#6b5b45',top:'#a87c52',apron:'#8c6540',pants:'#5b5148'}),
+  };
+  SPR.npc=SPR.villagers.mara.down[0]; // shop stand keeps her facing forward
+
 
   // ---------- mailbox ----------
   (function(){
@@ -377,69 +476,7 @@ function makeSprites(){
     SPR.well=c;
   })();
 
-  // ---------- Fern (forager) + Piet (carpenter) ----------
-  (function(){
-    const S=skin;
-    SPR.fern=outline(drawMap([
-      '.....HHHHHH.....',
-      '....HHHHHHHH....',
-      '....HHHHHHHH....',
-      '....SSSSSSSS....',
-      '....SESSSSES....',
-      '....SSSSSSSS....',
-      '....TTTTTTTT....',
-      '...TTTTTTTTTT...',
-      '...STTTTTTTTS...',
-      '....TTTTTTTT....',
-      '....PPPPPPPP....',
-      '....PPP..PPP....',
-      '....BBB..BBB....',
-      '................',
-      '................',
-      '................',
-    ],{S,H:'#a85f38',T:'#7a8a5f',P:'#5f5648',B:'#4a3f2e',E:'#3a2f22'}));
-    SPR.piet=outline(drawMap([
-      '.....CCCCCC.....',
-      '....CCCCCCCC....',
-      '....SSSSSSSS....',
-      '....SESSSSES....',
-      '....SSSSSSSS....',
-      '....TTTTTTTT....',
-      '...TTTTTTTTTT...',
-      '...STTTTTTTTS...',
-      '....AAAAAAAA....',
-      '....AAAAAAAA....',
-      '....PPPPPPPP....',
-      '....PPP..PPP....',
-      '....BBB..BBB....',
-      '................',
-      '................',
-      '................',
-    ],{S,C:'#6b5b45',T:'#a87c52',A:'#8c6540',P:'#5b5148',B:'#4a3f2e',E:'#3a2f22'}));
-  })();
 
-  // ---------- Old Bram (pond villager) ----------
-  (function(){
-    const S=skin,H='#c9c2b8',T='#7a6a4a',Pp='#5b5148',B=boots;
-    SPR.bram=outline(drawMap([
-      '................',
-      '.....HHHHHH.....',
-      '....HHHHHHHH....',
-      '....SSSSSSSS....',
-      '....SESSSSES....',
-      '....SSSSSSSS....',
-      '....SHHHHHHS....',
-      '.....HHHHHH.....',
-      '....TTTTTTTT....',
-      '...TTTTTTTTTT...',
-      '...STTTTTTTTS...',
-      '....TTTTTTTT....',
-      '....PPPPPPPP....',
-      '....PPP..PPP....',
-      '....BBB..BBB....',
-      '................',
-    ],{S,H,T,P:Pp,B,E:'#3a2f22'}));
-  })();
 
   // ---------- forage ground sprites ----------
   SPR.forage={
@@ -512,6 +549,32 @@ function makeSprites(){
       '.WW.............','.W..............','................','................',
       '................','................','................','................'],
       {W:'#8c6540',D:'#8d877f'}),
+  };
+  // villager portraits (24x24) for dialogue cards
+  function portrait(base, hair, hairStyle, extra){
+    const c=document.createElement('canvas'); c.width=24; c.height=24;
+    const x=c.getContext('2d');
+    const R=(a,b,w,h,col)=>{ x.fillStyle=col; x.fillRect(a,b,w,h); };
+    R(0,0,24,24,'#e8dcc4');                    // warm backdrop
+    R(0,22,24,2,'#d8c8a8');
+    R(7,8,10,11,base);                         // face
+    R(6,19,12,5,'#5a6e46');                    // shoulders
+    if(hairStyle==='bun'){ R(6,5,12,4,hair); R(5,7,3,7,hair); R(17,7,2,4,hair); R(9,4,6,3,hair); }
+    else if(hairStyle==='cap'){ R(5,4,14,5,extra.cap); R(4,8,16,2,extra.cap); }
+    else if(hairStyle==='loose'){ R(6,4,12,5,hair); R(5,8,3,9,hair); R(16,8,3,9,hair); }
+    else if(hairStyle==='sides'){ R(5,7,2,6,hair); R(17,7,2,6,hair); R(6,5,12,2,hair); }
+    R(9,12,2,2,'#2e2620'); R(14,12,2,2,'#2e2620');   // eyes
+    if(extra.freckles){ R(8,15,1,1,'#c98850'); R(10,16,1,1,'#c98850'); R(15,15,1,1,'#c98850'); }
+    if(extra.beard){ R(8,16,9,5,extra.beard); R(10,15,5,1,extra.beard); }
+    if(extra.blush){ R(7,14,2,1,'#e8a888'); R(16,14,2,1,'#e8a888'); }
+    R(11,16,3,1,'#b87a5a');                    // mouth hint
+    return c;
+  }
+  SPR.portraits={
+    mara:  portrait('#eec39a','#6e4a2e','bun',{blush:true}),
+    bram:  portrait('#d8ad84','#8d8d94','cap',{cap:'#5a5148',beard:'#a8a8ad'}),
+    fern:  portrait('#f0c9a0','#b85a32','loose',{freckles:true,blush:true}),
+    piet:  portrait('#e0b58e','#7a5a3a','sides',{beard:'#7a5a3a'}),
   };
   // quarry cave entrance: rock face with a dark way in
   SPR.caveent=icon([
