@@ -11,7 +11,9 @@ function initInput(canvas){
     if(e.key==='e'||e.key==='E'||e.key===' '){ Input.actEdge=true; e.preventDefault(); }
     if(e.key==='q'||e.key==='Q'||e.key==='Tab'){ Input.cycleEdge=true; e.preventDefault(); }
     if(e.key==='Escape'){ Input.menuClose=true; }
+    if(e.key==='j'||e.key==='J'){ Input.journalEdge=true; }
     if(e.key>='1'&&e.key<='9'){ Input.numKey=+e.key; }
+    if(e.key==='m'||e.key==='M'){ if(typeof Music!=='undefined'){ const mu=Music.toggleMute(); if(typeof toast==='function') toast(mu?'music off':'music on'); } }
   });
   addEventListener('keyup',e=>{ Input.keys[e.key.toLowerCase()]=false; });
   // touch joystick
@@ -28,7 +30,7 @@ function initInput(canvas){
   },{passive:false});
   const endStick=e=>{ for(const t of e.changedTouches){ if(t.identifier!==sid)continue; sid=null; Input.touchMove={x:0,y:0,active:false}; nub.style.transform='translate(-50%,-50%)'; } };
   stick.addEventListener('touchend',endStick); stick.addEventListener('touchcancel',endStick);
-  document.getElementById('btn-act').addEventListener('touchstart',e=>{ Input.actEdge=true; e.preventDefault(); },{passive:false});
+  document.getElementById('btn-act').addEventListener('touchstart',e=>{ if(window.modalAct){ window.modalAct(); } else Input.actEdge=true; e.preventDefault(); },{passive:false});
   document.getElementById('btn-cycle').addEventListener('touchstart',e=>{ Input.cycleEdge=true; e.preventDefault(); },{passive:false});
   // desktop: click canvas to act toward facing (optional, keep simple)
 }

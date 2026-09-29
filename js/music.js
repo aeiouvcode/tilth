@@ -4,7 +4,7 @@
 'use strict';
 const MUSIC_SCALES={ day:[0,2,4,7,9], night:[0,3,5,7,10] };
 function phraseFor(day, season, mood){
-  // mood: 0 day, 1 dusk, 2 night, 3 festival
+  // mood: 0 day, 1 dusk, 2 night, 3 lantern evening, 4 solstice
   const r=mulberry32(day*977 + season*131 + mood*17 + 11);
   const deg=(mood===2)?MUSIC_SCALES.night:MUSIC_SCALES.day;
   const bars=8, spb=4, notes=[];
@@ -13,7 +13,7 @@ function phraseFor(day, season, mood){
     // each bar opens on a chord tone, then walks
     cur=clamp([0,2,4][Math.floor(r()*3)] + Math.floor(r()*3)-1, 0, deg.length-1);
     for(let s=0;s<spb;s++){
-      const dens = mood===2 ? 0.38 : mood===3 ? 0.75 : 0.55;
+      const dens = mood===2 ? 0.38 : mood===3 ? 0.75 : mood===4 ? 0.65 : 0.55;
       if(s===0 || r()<dens){
         notes.push({bar:b, step:s, midi:deg[cur], oct: (r()<0.22?12:0)});
         if(r()<0.4) cur=clamp(cur+(r()<0.5?-1:1), 0, deg.length-1);
@@ -39,6 +39,7 @@ const Music={
   },
   loadMute(){ try{ this.muted=localStorage.getItem('tilth-mute')==='1'; }catch(e){} },
   moodOf(g){
+    if(g.day%28===0 && g.minutes>=1080) return 4; // solstice: the annual fire
     if(g.day%7===0 && g.minutes>=1080) return 3;         // lantern evening
     if(g.minutes>=1230 || g.minutes<330) return 2;       // night
     if(g.minutes>=1110) return 1;                        // dusk
@@ -53,7 +54,7 @@ const Music={
     if(!this.on||!AC)return;
     const g=Game.G; if(!g)return;
     this.retune(false);
-    const bpm= this.mood===3 ? 92 : this.mood===2 ? 56 : this.mood===1 ? 64 : 76;
+    const bpm= this.mood===4 ? 68 : this.mood===3 ? 92 : this.mood===2 ? 56 : this.mood===1 ? 64 : 76;
     const stepDur=60/bpm; // quarter-note steps
     const horizon=AC.currentTime+0.6;
     let guard=0;
@@ -79,6 +80,9 @@ const Music={
       const root= this.mood===2 ? 174.61 : 220.0;
       const f=root*2*Math.pow(2,(n.midi+n.oct)/12);
       this.note(f, t, stepDur*(this.mood===2?1.8:1.2), 'sine', this.mood===2?0.026:0.032);
+    }
+    if(this.mood===4 && s===0 && bar%2===0){ // soft bell, one ember per two bars
+      this.note(440*Math.pow(2,(bar%4)*2/12), t, 0.42, 'sine', 0.018);
     }
     if(this.mood===3 && s===2){ // festival sparkle
       this.note(880*Math.pow(2,(bar%3)*2/12), t, 0.18, 'sine', 0.012);

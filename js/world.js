@@ -2,13 +2,13 @@
 'use strict';
 const W=48, H=36;
 // tile ids
-const T={GRASS:0, PATH:1, SOIL:2, SOILWET:3, WATER:4, SAND:5, FENCE:6, ROCK:7, TREE:8, TREEB:9, HOUSE:10, CRATE:11, STAND:12, DOORMAT:13, COTTAGE:14, WELL:15, MAILBOX:16, CAVEENT:17};
-const SOLID=new Set([T.WATER,T.FENCE,T.ROCK,T.TREE,T.TREEB,T.HOUSE,T.CRATE,T.STAND,T.COTTAGE,T.WELL,T.MAILBOX,T.CAVEENT]);
+const T={GRASS:0, PATH:1, SOIL:2, SOILWET:3, WATER:4, SAND:5, FENCE:6, ROCK:7, TREE:8, TREEB:9, HOUSE:10, CRATE:11, STAND:12, DOORMAT:13, COTTAGE:14, WELL:15, MAILBOX:16, CAVEENT:17, COOP:18, BARN:19};
+const SOLID=new Set([T.WATER,T.FENCE,T.ROCK,T.TREE,T.TREEB,T.HOUSE,T.CRATE,T.STAND,T.COTTAGE,T.WELL,T.MAILBOX,T.CAVEENT,T.COOP,T.BARN]);
 
 // farmhouse interior: small separate room map
-const IT={FLOOR:0, WALL:1, BED:2, TABLE:3, RUG:4, DOOR:5, SHELF:6};
+const IT={FLOOR:0, WALL:1, BED:2, TABLE:3, RUG:4, DOOR:5, SHELF:6, HEARTH:7};
 const IW=11, IH=8;
-const ISOLID=new Set([IT.WALL,IT.BED,IT.TABLE,IT.SHELF]);
+const ISOLID=new Set([IT.WALL,IT.BED,IT.TABLE,IT.SHELF,IT.HEARTH]);
 function makeInterior(){
   const g=new Uint8Array(IW*IH).fill(IT.FLOOR);
   const set=(x,y,v)=>{ g[y*IW+x]=v; };
@@ -17,6 +17,7 @@ function makeInterior(){
   set(1,1,IT.BED); set(2,1,IT.BED); set(1,2,IT.BED); set(2,2,IT.BED);
   set(9,1,IT.SHELF); set(9,2,IT.SHELF);
   set(7,3,IT.TABLE);
+  set(7,1,IT.HEARTH); set(8,1,IT.HEARTH);
   set(4,3,IT.RUG); set(5,3,IT.RUG); set(4,4,IT.RUG); set(5,4,IT.RUG);
   set(5,IH-1,IT.DOOR);
   return g;
@@ -61,10 +62,14 @@ function makeWorld(){
     const x=38+Math.floor(pr()*8), y=4+Math.floor(pr()*22);
     if(at(x,y)===T.GRASS) set(x,y, hash2(x,y,44)>0.5?T.ROCK:T.TREE);
   }
+  // Cedars shade the walk without closing the road or the field gate.
+  for(const x of [24,31,36]) set(x,5,T.TREE);
   // a few rocks in the field
   set(30,18,T.ROCK); set(24,21,T.ROCK);
   // village lane east + cottage + well
   for(let x=16;x<=44;x++) set(x,8,T.PATH);
+  // A direct, visible branch leads from the road to the north field gate.
+  for(let y=9;y<=11;y++) set(21,y,T.PATH);
   for(let y=5;y<=8;y++) set(42,y,T.PATH);
   fillRect(41,2,4,3,T.COTTAGE);
   set(39,8,T.WELL);
