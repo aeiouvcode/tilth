@@ -76,7 +76,7 @@ const Render={
       if(G.seasonCached===3 && t!==T.WATER && t!==T.GRASS){ // winter frost on dirt/stone: even wash + speckle
         ctx.fillStyle='rgba(232,240,248,0.30)'; ctx.fillRect(dx,dy,TILE,TILE);
         ctx.fillStyle='rgba(245,250,255,0.55)';
-        for(let k=0;k<5;k++){ const hx=Math.floor(hash2(x*7+k,y*3+k,91)*14), hy=Math.floor(hash2(x*3,y*5+k,92)*14); ctx.fillRect(dx+hx,dy+hy,2,1); }
+        for(let k=0;k<2;k++){ const hx=Math.floor(hash2(x*7+k,y*3+k,91)*14), hy=Math.floor(hash2(x*3,y*5+k,92)*14); ctx.fillRect(dx+hx,dy+hy,2,1); }
       }
       if(t===T.PATH && G.seasonCached!==3 && hash2(x,y,63)>0.72){ // wildflowers along the lane
         const FC=['#e8b7c2','#f0e2b8','#c9d4e8'];
@@ -203,6 +203,53 @@ const Render={
             ctx.fillRect(px,py,1,5);ctx.fillRect(px-1,py+1,3,1);
           }
         }
+      }
+    }
+    // A broad sheltered community table faces the ordinary road from the
+    // farm. It is scenery over clear ground, not a collision or resource tile.
+    if(G.day>=8 && [17,18,19,20].every(x=>[6,7].every(y=>
+      (G.grid[y*W+x]===T.GRASS||G.grid[y*W+x]===T.PATH)&&!G.crops.has(y*W+x)))){
+      const tx=17*TILE-camX,ty=6*TILE-camY, winter=G.seasonCached===3;
+      if(tx>-5*TILE&&tx<cw+TILE&&ty>-4*TILE&&ty<ch+TILE){
+        ctx.fillStyle='rgba(56,48,36,0.18)';ctx.fillRect(tx+2,ty+20,61,17);
+        ctx.fillStyle='#584333';ctx.fillRect(tx+4,ty-16,4,44);ctx.fillRect(tx+59,ty-16,4,44);
+        ctx.fillStyle='#a97754';ctx.fillRect(tx+2,ty-20,64,8);
+        ctx.fillStyle=winter?'#ddd0bf':'#d3b188';ctx.fillRect(tx+4,ty-19,60,3);
+        ctx.fillStyle='#604735';ctx.fillRect(tx+9,ty-11,48,30);
+        ctx.fillStyle='#b78c60';ctx.fillRect(tx+12,ty-8,42,24);
+        const pages=Math.min(3,(G.tableWeeks||[]).length);
+        for(let i=0;i<3;i++){
+          const x=tx+15+i*13,y=ty-5+(i%2);
+          ctx.fillStyle=i<pages?'#f0e4c9':'#d9c7aa';ctx.fillRect(x,y,11,17);
+          ctx.fillStyle='#a57351';ctx.fillRect(x+5,y-2,2,3);
+          if(i<pages){
+            // Each weekly page has a different subject at phone scale: gate,
+            // pond, then cedar. The written branch has varied line lengths.
+            if(G.commonTable==='sketches'){
+              ctx.fillStyle='#577961';
+              if(i===0){ // the open field gate
+                ctx.fillRect(x+2,y+4,2,9);ctx.fillRect(x+8,y+4,2,9);
+                ctx.fillRect(x+2,y+4,8,2);ctx.fillRect(x+4,y+10,5,1);
+              }else if(i===1){ // Bram's pond
+                ctx.fillStyle='#7299a0';ctx.fillRect(x+1,y+8,9,4);
+                ctx.fillStyle='#416e75';ctx.fillRect(x+3,y+9,4,1);
+                ctx.fillStyle='#7c8b57';ctx.fillRect(x+2,y+4,1,5);ctx.fillRect(x+8,y+5,1,4);
+              }else{ // a cedar beside the road
+                ctx.fillStyle='#5a7950';ctx.fillRect(x+4,y+3,4,3);
+                ctx.fillRect(x+2,y+5,8,4);ctx.fillRect(x+3,y+8,6,2);
+                ctx.fillStyle='#735944';ctx.fillRect(x+5,y+10,2,3);
+              }
+            }else{
+              ctx.fillStyle='#775a43';
+              const widths=[[8,5,7,4],[6,8,4,7],[7,3,8,5]][i];
+              for(let line=0;line<4;line++)ctx.fillRect(x+2,y+3+line*3,widths[line],1);
+              ctx.fillStyle='#a47353';ctx.fillRect(x+7,y+14,2,1);
+            }
+          }
+        }
+        ctx.fillStyle='#76543b';ctx.fillRect(tx+10,ty+24,48,8);
+        ctx.fillStyle='#d5ad7c';ctx.fillRect(tx+12,ty+24,44,3);
+        ctx.fillStyle='#614b3b';ctx.fillRect(tx+13,ty+32,3,7);ctx.fillRect(tx+52,ty+32,3,7);
       }
     }
     // The entry route carries Fern's folded note on the inside gate post.
@@ -617,7 +664,10 @@ const Render={
     // facing highlight
     const f=facingTile(G.player);
     if(f) { ctx.strokeStyle='rgba(247,239,224,0.5)'; ctx.lineWidth=1; ctx.strokeRect(f.x*TILE-camX+0.5, f.y*TILE-camY+0.5, TILE-1, TILE-1);
-      this.hintPill(G, ctx, f.x*TILE-camX+TILE/2, f.y*TILE-camY, G.player.dir==='down'); }
+      // A long place label should not cover the three page drawings.
+      if(Game.nearCommonTable() && TOOLS[G.tool].id==='hand')
+        this.hintPill(G,ctx,px-camX,py-camY+13,true);
+      else this.hintPill(G, ctx, f.x*TILE-camX+TILE/2, f.y*TILE-camY, G.player.dir==='down'); }
     // fishing bobber
     if(G.fishing){
       const bx=G.fishing.x*TILE-camX+8, by=G.fishing.y*TILE-camY+8+Math.sin(now/350)*1.5;

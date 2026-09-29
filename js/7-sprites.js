@@ -37,10 +37,10 @@ function makeSprites(){
       const bx=Math.floor(r()*11), by=Math.floor(r()*11);
       x.fillRect(bx,by,5,3); x.fillRect(bx+1,by-1,3,5);
     }
-    dither(x,16,16,gd,0.05,r);
-    dither(x,16,16,gl,0.04,r);
-    if(r()<0.35){ px(x,2+Math.floor(r()*11),2+Math.floor(r()*11),1,1, r()<0.5?gf1:gf2); }
-    if(r()<0.25){ const gx=2+Math.floor(r()*10), gy=4+Math.floor(r()*8); px(x,gx,gy,1,2,gd); px(x,gx+1,gy+1,1,1,gd); }
+    dither(x,16,16,gd,pal===GRASS_PALS.winter?0.015:0.05,r);
+    dither(x,16,16,gl,pal===GRASS_PALS.winter?0.012:0.04,r);
+    if(r()<(pal===GRASS_PALS.winter?0.10:0.35)){ px(x,2+Math.floor(r()*11),2+Math.floor(r()*11),1,1, r()<0.5?gf1:gf2); }
+    if(r()<(pal===GRASS_PALS.winter?0.08:0.25)){ const gx=2+Math.floor(r()*10), gy=4+Math.floor(r()*8); px(x,gx,gy,1,2,gd); px(x,gx+1,gy+1,1,1,gd); }
     return c;
   }
   const SNamesG=['spring','summer','autumn','winter'];
