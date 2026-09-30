@@ -32,6 +32,7 @@ let MENU_OPEN=false;
 function menuOpen(){ return MENU_OPEN; }
 function openMenu(title, rows){
   MENU_OPEN=true;
+  document.getElementById('menu').classList.remove('table-visit');
   const m=document.getElementById('menu');
   document.getElementById('menu-title').textContent=title;
   const wrap=document.getElementById('menu-items'); wrap.innerHTML='';
@@ -47,11 +48,12 @@ function openMenu(title, rows){
   }
   m.classList.remove('hidden');
 }
-function closeMenu(){ MENU_OPEN=false; document.getElementById('menu').classList.add('hidden'); document.getElementById('menu-card').classList.remove('paper'); }
+function closeMenu(){ MENU_OPEN=false; document.getElementById('menu').classList.add('hidden'); document.getElementById('menu').classList.remove('table-visit'); document.getElementById('menu-card').classList.remove('paper'); }
 
 // ---------- letters ----------
 function openLetter(from, subject, body){
   MENU_OPEN=true;
+  document.getElementById('menu').classList.remove('table-visit');
   document.getElementById('menu-card').classList.add('paper');
   const titleEl=document.getElementById('menu-title'); titleEl.textContent='';
   const head=document.createElement('canvas'); head.width=96; head.height=24;
@@ -110,6 +112,7 @@ function updateBelt(){
 function openDialogue(name, text, extraRows, portraitId){
   MENU_OPEN=true;
   const m=document.getElementById('menu');
+  m.classList.toggle('table-visit', name==='the village table');
   const titleEl=document.getElementById('menu-title');
   titleEl.textContent='';
   if(portraitId&&SPR.portraits[portraitId]){
@@ -126,8 +129,17 @@ function openDialogue(name, text, extraRows, portraitId){
   }
   const wrap=document.getElementById('menu-items'); wrap.innerHTML='';
   const p=document.createElement('div');
-  p.style.cssText='padding:8px 4px;font-size:14px;color:#4a3f2e;line-height:1.5;font-style:italic;';
+  if(name==='the village table')p.className='table-passage';
+  else p.style.cssText='padding:8px 4px;font-size:14px;color:#4a3f2e;line-height:1.5;font-style:italic;';
   p.textContent='\u201C'+text+'\u201D';
+  if(name==='the village table'){
+    const voices=document.createElement('div');voices.className='table-voice';
+    for(const id of ['mara','fern','bram']){
+      const art=document.createElement('img');art.alt=Game.NPCS[id].name;
+      art.src=SPR.portraits[id].toDataURL('image/png');voices.appendChild(art);
+    }
+    wrap.appendChild(voices);
+  }
   wrap.appendChild(p);
   for(const r of (extraRows||[])){
     const d=document.createElement('div'); d.className='menu-row';
@@ -531,6 +543,13 @@ async function runAutotest(){
   const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
   // place player next to starter soil patch (20..25, 13..16)
   g.player.x=19.5*TILE; g.player.y=13.5*TILE; g.player.dir='right';
+  step(()=>{
+    for(const [w,h,want] of [[390,844,3],[360,640,3],[520,900,3],[320,568,2],[844,390,2],[390,600,2]]){
+      if(Render.scaleForViewport(w,h)!==want)throw new Error('camera scale '+w+'x'+h);
+    }
+    if(Render.scaleForViewport(390,844,false)!==2)throw new Error('room camera fallback');
+    if(Render.canvas.width!==Math.ceil(innerWidth/Render.scale)||Render.canvas.height!==Math.ceil(innerHeight/Render.scale))throw new Error('camera buffer mismatch');
+  },'portrait camera scale and short-screen fallback');
   step(()=>{
     for(const id of ['mara','bram','fern','piet']) if(!SPR.portraits[id]) throw new Error('missing portrait '+id);
     if(!document.getElementById('title-art')) throw new Error('no title-art canvas');
@@ -1928,6 +1947,76 @@ async function runAutotest(){
       g.commonTable='';g.tableWeeks=[];g.player.x=4*TILE;Game.joinCommonTable('sketches');if(g.commonTable)throw new Error('remote join accepted');
     }finally{Game.G=keep;if(oldSave===null)localStorage.removeItem(SAVE_KEY);else localStorage.setItem(SAVE_KEY,oldSave);if(menuOpen())closeMenu();}
   },'village table normal-route three-week arc');
+  step(()=>{ // after three pages, ordinary weekly return gains a distinct seasonal margin
+    const keep=Game.G, oldSave=localStorage.getItem(SAVE_KEY);
+    try{
+      Game.newGame();let g=Game.G;
+      g.day=22;g.minutes=600;g.seasonCached=Game.season();g.player.x=18.5*TILE;g.player.y=8.5*TILE;
+      g.tool=TOOLS.findIndex(t=>t.id==='hand');g.player.dir='up';g.commonTable='sketches';g.tableWeeks=[0,1,2];g.fieldPlan='';g.fieldPlanDay=0;g.fieldSeasonPending=-1;
+      const coins=g.coins,energy=g.energy,produce=JSON.stringify(g.produce),xp=JSON.stringify(g.skillXp);
+      Game.useTool();let m=document.getElementById('menu');
+      if(!m.textContent.includes('white margin')||!m.textContent.includes('leave a seasonal margin'))throw new Error('first winter return absent');
+      if(!m.classList.contains('table-visit')||m.querySelectorAll('.table-voice img').length!==3)throw new Error('table visit composition absent');
+      const card=m.querySelector('#menu-card').getBoundingClientRect();
+      if(card.bottom>innerHeight-10||(innerWidth<=430&&innerHeight>=700&&card.top<innerHeight*.58))throw new Error('table sheet obscures board or exits viewport');
+      const pre=new Uint8ClampedArray(Render.ctx.getImageData(0,0,Render.canvas.width,Render.canvas.height).data);
+      [...m.querySelectorAll('.menu-row')].find(r=>r.textContent.includes('leave a seasonal margin')).click();
+      if(g.tableSeasons.join()!=='3'||g.tableWeeks.join()!=='0,1,2,3'||g.minutes!==660)throw new Error('winter margin did not land');
+      if(g.coins!==coins||g.energy!==energy||JSON.stringify(g.produce)!==produce||JSON.stringify(g.skillXp)!==xp)throw new Error('season margin rewarded resources');
+      Render.draw(g,100);const post=Render.ctx.getImageData(0,0,Render.canvas.width,Render.canvas.height).data;
+      let changed=0;for(let i=0;i<pre.length;i+=4)if(pre[i]!==post[i]||pre[i+1]!==post[i+1])changed++;
+      if(changed<8)throw new Error('winter mark not rendered '+changed);
+      Game.useTool();if(m.textContent.includes('leave a seasonal margin'))throw new Error('same-week margin repeat');closeMenu();
+      if(m.classList.contains('table-visit'))throw new Error('table layout leaked after close');
+      Game.openJournal();if(m.classList.contains('table-visit'))throw new Error('table layout leaked to journal');closeMenu();
+      g.day=27;g.minutes=600;g.seasonCached=Game.season();Game.useTool();
+      if(m.textContent.includes('leave a seasonal margin')||m.textContent.includes('sit with them again'))throw new Error('same-week repeat');closeMenu();
+      g.day=29;g.minutes=600;g.seasonCached=Game.season();Game.useTool();
+      if(!m.textContent.includes('thaw')||!m.textContent.includes('leave a seasonal margin'))throw new Error('spring return indistinct');
+      [...m.querySelectorAll('.menu-row')].find(r=>r.textContent.includes('leave a seasonal margin')).click();
+      if(g.tableSeasons.join()!=='3,0')throw new Error('spring mark failed');
+      g.day=34;g.minutes=600;g.seasonCached=Game.season();Game.useTool();
+      if(m.textContent.includes('leave a seasonal margin')||m.textContent.includes('sit with them again'))throw new Error('same-week return exposed');closeMenu();
+      g.day=36;g.minutes=600;g.seasonCached=Game.season();Game.useTool();
+      if(!m.textContent.includes('summer light')||!m.textContent.includes('leave a seasonal margin'))throw new Error('summer return missing');
+      [...m.querySelectorAll('.menu-row')].find(r=>r.textContent.includes('leave a seasonal margin')).click();
+      if(g.tableSeasons.join()!=='3,0,1'||g.tableWeeks.join()!=='0,1,2,3,4,5')throw new Error('summer return failed');
+      Game.openJournal();if(!m.textContent.includes('Winter on the road')||!m.textContent.includes('Spring on the road'))throw new Error('season journal missing');closeMenu();
+      Game.save();Game.load();g=Game.G;if(g.tableSeasons.join()!=='3,0,1')throw new Error('season margins not saved');
+      const saved=JSON.parse(localStorage.getItem(SAVE_KEY));delete saved.tableSeasons;
+      localStorage.setItem(SAVE_KEY,JSON.stringify(saved));Game.load();g=Game.G;
+      if(g.tableSeasons.length)throw new Error('older save season default');
+      g.tableSeasons=['bad',-1,0,0,4,2.5];Game.save();Game.load();g=Game.G;
+      if(g.tableSeasons.join()!=='0')throw new Error('malformed season marks accepted');
+      // The stories path gets its own return scene and a visible seasonal tab.
+      Game.newGame();g=Game.G;g.day=22;g.minutes=600;g.seasonCached=Game.season();
+      g.player.x=18.5*TILE;g.player.y=8.5*TILE;g.player.dir='up';g.tool=TOOLS.findIndex(t=>t.id==='hand');
+      g.commonTable='stories';g.tableWeeks=[0,1,2];Game.useTool();
+      if(!m.textContent.includes('sound of boots')||!m.textContent.includes('leave a seasonal margin'))throw new Error('story winter scene missing');
+      [...m.querySelectorAll('.menu-row')].find(r=>r.textContent.includes('leave a seasonal margin')).click();
+      if(g.tableSeasons.join()!=='3')throw new Error('story winter mark missing');
+      g.day=29;g.minutes=600;g.seasonCached=Game.season();Game.useTool();
+      if(!m.textContent.includes('first grass name')||!m.textContent.includes('leave a seasonal margin'))throw new Error('story spring scene missing');closeMenu();
+      g.day=29;g.minutes=600;g.tableSeasons=[];g.player.x=4*TILE;Game.joinCommonTable('stories');
+      if(g.tableSeasons.length)throw new Error('remote margin accepted');
+      g.player.x=18.5*TILE;g.day=30;Game.joinCommonTable('sketches');
+      if(g.tableSeasons.length)throw new Error('wrong-day margin accepted');
+    }finally{Game.G=keep;if(oldSave===null)localStorage.removeItem(SAVE_KEY);else localStorage.setItem(SAVE_KEY,oldSave);if(menuOpen())closeMenu();}
+  },'seasonal table follow-through without a fourth page');
+  step(()=>{
+    updateHUD();updateBelt();
+    for(const el of [...document.querySelectorAll('#hud .chip, #toolbelt .tslot')]){
+      const r=el.getBoundingClientRect();if(r.left<0||r.right>innerWidth+.5)throw new Error('clipped HUD or tool '+el.className);
+    }
+    const g=Game.G,keep={day:g.day,minutes:g.minutes,player:{...g.player},tool:g.tool,indoor:g.indoor,inCave:g.inCave};
+    try{
+      g.day=8;g.minutes=600;g.indoor=false;g.inCave=false;g.player.x=18.5*TILE;g.player.y=8.5*TILE;g.tool=TOOLS.findIndex(t=>t.id==='hand');Game.openCommonTable();
+      const m=document.getElementById('menu');
+      if(getComputedStyle(m).backgroundColor!=='rgba(46, 38, 32, 0.2)')throw new Error('table scrim too dark');
+      closeMenu();Game.openJournal();
+      if(m.classList.contains('table-visit'))throw new Error('table scrim leaks into journal');
+    }finally{Object.assign(g,keep);if(menuOpen())closeMenu();}
+  },'responsive HUD and table-only light scrim');
   step(()=>{ // rendering smoke: draw 30 frames with no errors
     for(let i=0;i<30;i++) Render.draw(Game.G, performance.now()+i*33);
   },'render 30 frames');

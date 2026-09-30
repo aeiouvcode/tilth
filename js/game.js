@@ -28,7 +28,7 @@ const Game={
       skillXp:{farm:0, fish:0, mine:0, forage:0}, discovered:{},
       toolTier:{can:0, hoe:0, pick:0},
       seenEvents:{}, perks:{lure:false, sturdyCrate:false},
-      coop:false, eggs:{}, hens:[], barn:false, cow:null, animalCare:{hen0:0,hen1:0,cow:0}, penFeedDay:0, penFeedHen:-1, maxCave:1, fairEnteredDay:0, solsticeToastDay:0, solsticeKeepsakeDay:0, solsticeKeepsakes:[], gateWelcomeDay:0, fernRoadHeard:false, roadChoice:'', pondChoice:'', pondChoiceDay:0, meadowLesson:'', meadowLessonDay:0, meadowLessonHeard:false, fieldPlan:'', fieldPlanDay:0, fieldPlanHeard:false, fieldGathered:[], fieldSeasons:[], fieldSeasonPending:-1, commonTable:'', tableWeeks:[],
+      coop:false, eggs:{}, hens:[], barn:false, cow:null, animalCare:{hen0:0,hen1:0,cow:0}, penFeedDay:0, penFeedHen:-1, maxCave:1, fairEnteredDay:0, solsticeToastDay:0, solsticeKeepsakeDay:0, solsticeKeepsakes:[], gateWelcomeDay:0, fernRoadHeard:false, roadChoice:'', pondChoice:'', pondChoiceDay:0, meadowLesson:'', meadowLessonDay:0, meadowLessonHeard:false, fieldPlan:'', fieldPlanDay:0, fieldPlanHeard:false, fieldGathered:[], fieldSeasons:[], fieldSeasonPending:-1, commonTable:'', tableWeeks:[], tableSeasons:[],
     };
     const r=mulberry32(1234);
     for(let i=0;i<3;i++) g.clouds.push({x:r()*W*TILE, y:20+r()*120, r:26+r()*30});
@@ -106,6 +106,8 @@ const Game={
       if(!['sketches','stories'].includes(d.commonTable))d.commonTable='';
       if(!Array.isArray(d.tableWeeks))d.tableWeeks=[];
       d.tableWeeks=[...new Set(d.tableWeeks.filter(n=>Number.isInteger(n)&&n>=0&&n<=1000))].slice(0,1000);
+      if(!Array.isArray(d.tableSeasons))d.tableSeasons=[];
+      d.tableSeasons=[...new Set(d.tableSeasons.filter(n=>Number.isInteger(n)&&n>=0&&n<4))];
       if(!d.maxCave) d.maxCave=1; if(!d.fairEnteredDay) d.fairEnteredDay=0; if(!d.solsticeToastDay) d.solsticeToastDay=0; if(!d.solsticeKeepsakeDay) d.solsticeKeepsakeDay=0; if(!Array.isArray(d.solsticeKeepsakes)) d.solsticeKeepsakes=[];
       if(d.barn){ for(let by=4;by<=5;by++) for(let bx=16;bx<=18;bx++) d.grid[by*W+bx]=T.BARN; }
       this.G=d; return d;
@@ -479,6 +481,7 @@ const Game={
     if(g.commonTable){
       rows.push({label:'the village table',desc:g.commonTable==='sketches'?'neighbors have left drawings from the valley':'neighbors have left words from the valley',price:'',icon:null,pick:()=>{}});
       for(let i=0;i<Math.min(3,g.tableWeeks.length);i++)rows.push({label:`table visit ${i+1}`,desc:['a first page shared with Mara and Fern','a neighbor came back with a different view','three pages now face the road'][i],price:'',icon:null,pick:()=>{}});
+      for(const season of (g.tableSeasons||[]))rows.push({label:SEASONS[season]+' on the road',desc:['the gate page stays open to the first thaw','Mara names the field path beside its drawing','Bram remembers the pond before the leaves fell','Fern leaves a pale margin for the next hand'][season],price:'',icon:null,pick:()=>{}});
     }
     for(const s of (g.fieldSeasons||[])){
       const copy=g.fieldPlan==='nest'?{1:'we watched the birds from the quiet edge',2:'we left the autumn stems standing',3:'we tied one winter stem above the snow'}:{1:'we carried a basket along the summer way',2:'we swept the turning stones in autumn',3:'we brushed a narrow way through the snow'};
@@ -814,6 +817,20 @@ const Game={
     return !g.indoor&&!g.inCave&&g.day>=8&&
       Math.hypot(g.player.x-18.5*TILE,g.player.y-8.5*TILE)<TILE*1.8;
   },
+  tableSeasonScene(){
+    const g=this.G, s=this.season(), sketches=g.commonTable==='sketches';
+    return (sketches?[
+      'Mara lifts the gate drawing where the thaw has left a stain. Fern traces the narrow path without closing the empty space beside it.',
+      'The summer light reaches the first page. Mara points to the field way she uses now; Fern draws the shade where they stop.',
+      'Bram follows the pond line with one finger. The reeds he remembers have changed, but his old bank is still there.',
+      'Fern leaves a broad white margin around the cedar. No one has to fill it before the snow melts.'
+    ]:[
+      'Mara reads the first grass name again after the thaw. Fern adds the one she heard from a child walking past.',
+      'The summer page holds two names for the same field path. Mara says both aloud before she folds the sheet.',
+      'Bram tells the pond story differently this time. Fern keeps both versions and leaves the ending untied.',
+      'Fern writes down the sound of boots crossing the frozen road. Mara leaves the next line empty for spring.'
+    ])[s];
+  },
   openCommonTable(){
     if(!this.nearCommonTable())return;
     const g=this.G, visits=g.tableWeeks.length, available=this.tableDay()&&!g.tableWeeks.includes(this.tableWeek());
@@ -834,17 +851,22 @@ const Game={
       'Bram remembers the winter when the pond held every footprint. Fern writes it beneath Mara\'s line.',
       'The three sheets hold a season of voices. Mara reads the first line aloud, then asks you to leave the last one open.'
     ];
-    const rows=available?[{label:visits===0?'begin a page together':visits>=3?'sit with them again':'add another page',
-      desc:'spend one hour this week; no coin, item or XP',price:'',pick:()=>this.joinCommonTable(g.commonTable)}]:[];
-    openDialogue('the village table',scenes[Math.min(2,Math.max(0,visits-1))]+(available?'':g.tableWeeks.includes(this.tableWeek())?' You have already spent time here this week.':' Mara sets out the pages again on the first and sixth mornings, unless the south field needs us.'),rows);
+    const returnSeason=visits>=3&&!g.tableSeasons.includes(this.season());
+    const rows=available?[{label:visits===0?'begin a page together':visits>=3?(returnSeason?'leave a seasonal margin':'sit with them again'):'add another page',
+      desc:visits>=3&&returnSeason?'one quiet hour; a small season mark, no coin, item or XP':'spend one hour this week; no coin, item or XP',price:'',pick:()=>this.joinCommonTable(g.commonTable)}]:[];
+    const passage=visits>=3?this.tableSeasonScene():scenes[Math.max(0,visits-1)];
+    openDialogue('the village table',passage+(available?'':g.tableWeeks.includes(this.tableWeek())?' You have already spent time here this week.':' Mara sets out the pages again on the first and sixth mornings, unless the south field needs us.'),rows);
   },
   joinCommonTable(theme){
     const g=this.G;
     if(!this.nearCommonTable()||!this.tableDay()||g.tableWeeks.includes(this.tableWeek())||
       !['sketches','stories'].includes(theme)||(g.commonTable&&g.commonTable!==theme))return;
-    g.commonTable=theme;g.tableWeeks.push(this.tableWeek());
+    g.commonTable=theme;
+    const seasonMargin=g.tableWeeks.length>=3&&!g.tableSeasons.includes(this.season());
+    g.tableWeeks.push(this.tableWeek());
+    if(seasonMargin)g.tableSeasons.push(this.season());
     g.minutes=Math.min(DAY_END-1,g.minutes+60);this.save();closeMenu();
-    toast(g.tableWeeks.length>=3?'the road has three shared pages':'a page faces the road');
+    toast(seasonMargin?'a season settles at the edge of the page':g.tableWeeks.length>=3?'the road has three shared pages':'a page faces the road');
   },
   // Fern lays out a teaching place by the west field on the second morning.
   // The player decides how people will gather; neither option pays or changes crops.

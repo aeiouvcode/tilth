@@ -5,11 +5,17 @@ const Render={
   init(){
     this.canvas=document.getElementById('game');
     this.ctx=this.canvas.getContext('2d');
-    this.resize(); addEventListener('resize',()=>this.resize());
+    this.resize(); addEventListener('resize',()=>this.resize(Game.G));
   },
-  resize(){
+  scaleForViewport(vw,vh,outdoors=true){
+    // Portrait phones prioritize people over a 22-tile-wide overview. Keep
+    // integer pixels and the wider view for short or very narrow screens.
+    const phoneClose=outdoors&&vw>=360&&vw<=520&&vh>=640&&vh>vw;
+    return clamp(Math.floor(Math.min(vw/(TILE*22), vh/(TILE*15))), phoneClose?3:2, 8);
+  },
+  resize(G){
     const vw=innerWidth, vh=innerHeight;
-    this.scale=clamp(Math.floor(Math.min(vw/(TILE*22), vh/(TILE*15))), 2, 8);
+    this.scale=this.scaleForViewport(vw,vh,!(G&&(G.indoor||G.inCave)));
     this.canvas.width=Math.ceil(vw/this.scale); this.canvas.height=Math.ceil(vh/this.scale);
     this.canvas.style.width=(this.canvas.width*this.scale)+'px';
     this.canvas.style.height=(this.canvas.height*this.scale)+'px';
@@ -43,6 +49,7 @@ const Render={
     ctx.fillText(label, x+3, y+4.5);
   },
   draw(G, now){
+    if(this.scale!==this.scaleForViewport(innerWidth,innerHeight,!(G.indoor||G.inCave)))this.resize(G);
     if(G.indoor){ this.drawInterior(G, now); return; }
     if(G.inCave){ this.drawCave(G, now); return; }
     const ctx=this.ctx, cw=this.canvas.width, ch=this.canvas.height;
@@ -246,6 +253,18 @@ const Render={
               ctx.fillStyle='#a47353';ctx.fillRect(x+7,y+14,2,1);
             }
           }
+        }
+        // Cloth tabs stay on the roof through later seasons. Large enough to
+        // recognize at phone width, yet clear of every drawing and crop tile.
+        if(pages===3)for(const season of (G.tableSeasons||[])){
+          const mx=tx+7+season*13,my=ty-20;
+          ctx.fillStyle='#584333';ctx.fillRect(mx-1,my-2,12,11);
+          ctx.fillStyle=['#9cbe87','#d5af64','#ad7355','#b6d2db'][season];ctx.fillRect(mx,my,10,8);
+          ctx.fillStyle='#efe3c8';
+          if(season===0){ctx.fillRect(mx+4,my+2,2,4);ctx.fillRect(mx+2,my+4,6,1);}
+          else if(season===1){ctx.fillRect(mx+3,my+2,4,4);ctx.fillRect(mx+4,my+1,2,6);}
+          else if(season===2){ctx.fillRect(mx+2,my+3,6,2);ctx.fillRect(mx+6,my+2,2,4);}
+          else{ctx.fillRect(mx+4,my+1,2,6);ctx.fillRect(mx+2,my+3,6,2);}
         }
         ctx.fillStyle='#76543b';ctx.fillRect(tx+10,ty+24,48,8);
         ctx.fillStyle='#d5ad7c';ctx.fillRect(tx+12,ty+24,44,3);
