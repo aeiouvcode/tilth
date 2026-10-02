@@ -108,6 +108,17 @@ function updateBelt(){
   });
 }
 
+// The belt is also a direct touch target. Delegate from its stable parent:
+// updateBelt replaces the slots whenever selection or inventory changes.
+document.getElementById('toolbelt').addEventListener('pointerdown',e=>{
+  if(menuOpen()||e.button!==0)return;
+  const slot=e.target.closest('.tslot'); if(!slot)return;
+  const i=[...slot.parentElement.children].indexOf(slot);
+  if(i<0||i>=TOOLS.length)return;
+  e.preventDefault();
+  Game.G.tool=i; updateBelt();
+});
+
 // ---------- dialogue ----------
 function openDialogue(name, text, extraRows, portraitId){
   MENU_OPEN=true;
@@ -1370,6 +1381,26 @@ async function runAutotest(){
     if(g.indoor) throw new Error('still indoors');
     if(Math.floor(g.player.x/TILE)!==8) throw new Error('exit x '+Math.floor(g.player.x/TILE));
   },'house interior');
+  step(()=>{
+    g=Game.G; closeMenu(); Input.keys={}; Input.touchMove={x:0,y:0,active:false};
+    const locate=(map,w,t)=>{const i=map.indexOf(t);if(i<0)throw new Error('missing transition tile');g.player.x=(i%w+.5)*TILE;g.player.y=(Math.floor(i/w)+.5)*TILE;};
+    const read=()=>{Game.openJournal();const at={x:g.player.x,y:g.player.y,time:g.minutes,level:g.caveLevel};
+      Input.touchMove={x:0,y:1,active:true};for(let i=0;i<100;i++)Game.update(100,performance.now());
+      Input.touchMove={x:0,y:0,active:false};
+      if(!menuOpen()||g.minutes!==at.time||g.player.x!==at.x||g.player.y!==at.y||g.caveLevel!==at.level)throw new Error('reading changed position/time/depth');};
+    try{
+      Game.enterHouse();locate(g.interior,IW,IT.DOOR);read();
+      if(!g.indoor)throw new Error('journal exited house');closeMenu();Game.update(16,performance.now());
+      if(g.indoor)throw new Error('house door did not resume');
+      g.maxCave=1;Game.enterCave();locate(g.cave,CW,CT.STAIRS);read();
+      if(!g.inCave||g.caveLevel!==1)throw new Error('journal descended');closeMenu();Game.update(16,performance.now());
+      if(g.caveLevel!==2)throw new Error('stairs did not resume');
+      locate(g.cave,CW,CT.DOOR);read();closeMenu();Game.update(16,performance.now());
+      if(g.caveLevel!==1||!g.inCave)throw new Error('upper door did not ascend');
+      locate(g.cave,CW,CT.DOOR);read();if(!g.inCave)throw new Error('journal exited cave');
+      closeMenu();Game.update(16,performance.now());if(g.inCave)throw new Error('cave exit did not resume');
+    }finally{closeMenu();Input.touchMove={x:0,y:0,active:false};if(g.indoor)Game.exitHouse();if(g.inCave)Game.exitCave();}
+  },'modal reading holds house and cave transitions, close resumes');
   step(()=>{ // quarry cave: enter, mine, respawn daily, exit; farm rocks break
     g=Game.G;
     g.player.x=45.5*TILE; g.player.y=13.5*TILE; g.player.dir='right';
@@ -2017,6 +2048,25 @@ async function runAutotest(){
       if(m.classList.contains('table-visit'))throw new Error('table scrim leaks into journal');
     }finally{Object.assign(g,keep);if(menuOpen())closeMenu();}
   },'responsive HUD and table-only light scrim');
+  step(()=>{
+    const g=Game.G,oldTool=g.tool; const belt=document.getElementById('toolbelt');
+    try{
+      for(let i=0;i<TOOLS.length;i++){
+        const slot=belt.children[i];
+        if(getComputedStyle(slot).pointerEvents==='none')throw new Error('belt cannot receive taps');
+        // Tap the icon, not just its wrapper. A fresh node is needed each time.
+        slot.querySelector('canvas').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:0,pointerType:'touch'}));
+        if(g.tool!==i||!belt.children[i].classList.contains('active'))throw new Error('belt selection failed '+i);
+      }
+      const selected=g.tool;
+      Game.openJournal();belt.children[0].dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:0,pointerType:'touch'}));
+      if(g.tool!==selected)throw new Error('belt changed under modal');closeMenu();
+      belt.children[0].dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:2,pointerType:'mouse'}));
+      if(g.tool!==selected)throw new Error('right-click changed tool');
+      belt.children[0].dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:0,pointerType:'mouse'}));
+      if(g.tool!==0)throw new Error('mouse belt selection failed');
+    }finally{g.tool=oldTool;updateBelt();if(menuOpen())closeMenu();}
+  },'direct toolbelt touch selection and modal ownership');
   step(()=>{ // rendering smoke: draw 30 frames with no errors
     for(let i=0;i<30;i++) Render.draw(Game.G, performance.now()+i*33);
   },'render 30 frames');

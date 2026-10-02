@@ -15,8 +15,8 @@ body { font-family: Georgia, 'Times New Roman', serif; }
 #energy-fill.low { background:#c96f4a; }
 
 /* toolbelt */
-#toolbelt { position:absolute; bottom:max(10px, env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); display:flex; gap:6px; pointer-events:none; }
-.tslot { width:44px; height:44px; border-radius:10px; background:#f7efe0; border:1px solid #d9c9a8; display:flex; align-items:center; justify-content:center; position:relative; opacity:.75; }
+#toolbelt { position:absolute; bottom:max(10px, env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); display:flex; gap:6px; pointer-events:auto; touch-action:none; }
+.tslot { cursor:pointer; width:44px; height:44px; border-radius:10px; background:#f7efe0; border:1px solid #d9c9a8; display:flex; align-items:center; justify-content:center; position:relative; opacity:.75; }
 .tslot.active { opacity:1; border-color:#a87c22; box-shadow:0 0 0 2px #d9a44166; }
 .tslot canvas { image-rendering:pixelated; }
 .tslot .count { position:absolute; bottom:-2px; right:-2px; background:#4a3f2e; color:#f7efe0; font-size:9px; border-radius:8px; padding:1px 5px; }

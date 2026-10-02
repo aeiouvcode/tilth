@@ -1447,8 +1447,8 @@ const Game={
     if(g.indoor||g.inCave){
       // stepping into the doorway walks back out
       const ptx=Math.floor(g.player.x/TILE), pty=Math.floor(g.player.y/TILE);
-      if(g.indoor){ if(ptx>=0&&pty>=0&&ptx<IW&&pty<IH&&g.interior[pty*IW+ptx]===IT.DOOR) this.exitHouse(); }
-      else if(ptx>=0&&pty>=0&&ptx<CW&&pty<CH){
+      if(!menuOpen()&&g.indoor){ if(ptx>=0&&pty>=0&&ptx<IW&&pty<IH&&g.interior[pty*IW+ptx]===IT.DOOR) this.exitHouse(); }
+      else if(!menuOpen()&&g.inCave&&ptx>=0&&pty>=0&&ptx<CW&&pty<CH){
         if(g.cave[pty*CW+ptx]===CT.DOOR) this.ascendCave();
         else if(g.cave[pty*CW+ptx]===CT.STAIRS) this.descendCave();
       }
