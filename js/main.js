@@ -180,9 +180,9 @@ function openFishingGame(fish, done){
   const zone=document.createElement('div');
   const zw=Math.max(8, fish.zone*100);
   const zl=8+Math.random()*(84-zw);
-  zone.style.cssText=`position:absolute;top:0;bottom:0;left:${zl}%;width:${zw}%;background:#7a9e5f;`;
+  zone.style.cssText=`position:absolute;top:0;bottom:0;left:${zl}%;width:${zw}%;background:#557f3c;`;
   const mark=document.createElement('div');
-  mark.style.cssText='position:absolute;top:-2px;bottom:-2px;width:3px;background:#4a3f2e;';
+  mark.style.cssText='position:absolute;top:-2px;bottom:-2px;width:3px;background:#4a3f2e;box-shadow:0 0 0 1px #f7efe0;';
   track.appendChild(zone); track.appendChild(mark); wrap.appendChild(track);
   const btn=document.createElement('div'); btn.className='menu-row';
   btn.innerHTML='<div class="nm">reel! (E / tap / A)</div>';
