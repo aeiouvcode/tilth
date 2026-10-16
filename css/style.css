@@ -33,10 +33,10 @@ body { font-family: Georgia, 'Times New Roman', serif; }
 /* touch controls */
 #touch-ui { display:none; }
 @media (pointer:coarse) { #touch-ui { display:block; } }
-#stick { position:absolute; bottom:76px; left:22px; width:104px; height:104px; border-radius:50%; background:#f7efe033; border:1.5px solid #f7efe088; touch-action:none; }
-#stick-nub { position:absolute; left:50%; top:50%; width:44px; height:44px; border-radius:50%; background:#f7efe0cc; transform:translate(-50%,-50%); box-shadow:0 1px 4px #0002; }
+#stick { position:absolute; bottom:76px; left:22px; width:104px; height:104px; border-radius:50%; background:#2e262088; border:2px solid #f7efe0; box-shadow:0 0 0 1px #2e2620; touch-action:none; }
+#stick-nub { position:absolute; left:50%; top:50%; width:44px; height:44px; border-radius:50%; background:#f7efe0; transform:translate(-50%,-50%); box-shadow:0 0 0 2px #2e2620; }
 #touch-btns { position:absolute; bottom:84px; right:22px; display:flex; gap:12px; align-items:flex-end; }
-#touch-btns button { border:none; border-radius:50%; font-family:inherit; box-shadow:0 2px 6px #0003; }
+#touch-btns button { border:none; border-radius:50%; font-family:inherit; box-shadow:0 0 0 2px #2e2620, 0 0 0 3px #f7efe0; }
 #btn-act { width:64px; height:64px; font-size:22px; background:#d9a441; color:#4a3f2e; font-weight:bold; }
 #btn-cycle { width:46px; height:46px; font-size:18px; background:#f7efe0dd; color:#4a3f2e; margin-bottom:4px; }
 
