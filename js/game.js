@@ -1024,11 +1024,32 @@ const Game={
     piet:"Cedar burns slow. Good way to see the old year out without rushing the new one.",
   },
   WINTER_LINES:{
-    mara:"Winter's for mending nets and counting jars. Frostroot still takes, if you keep it watered - stubborn little thing.",
-    bram:"The pond skin thickens, but the icefin run under it. Cold hands, full creel.",
-    fern:"I found a frostcap under the cedar. It glows a little. I named him Gerald.",
-    piet:"Snow's coming down soft. Good building weather - the wood's dry and the days are short.",
+    mara:[
+      "Winter's for mending nets and counting jars. Frostroot still takes, if you keep it watered - stubborn little thing.",
+      "I banked the stove early. The seed drawers stay dry if the room stays warm, and the room stays warm if I stop opening the door to look at the snow.",
+      "Mother used to read the ledger aloud in winter, just to hear the good years again. I'm only on page nine.",
+      "If you're short on coin, frostroot sells when nothing else will. Cold has its own market.",
+      "Someone left a footprint ring around the stand last night. Fox, I think. Or Fern pretending to be one."],
+    bram:[
+      "The pond skin thickens, but the icefin run under it. Cold hands, full creel.",
+      "Cut the hole small. Big holes scare the fish and invite the wind.",
+      "My knees know it's snowing before the sky does. Better than any almanac, and twice as rude.",
+      "The carp sleep down by the deep notch in winter. I whisper good morning anyway.",
+      "Wrap your line hand. Wet string freezes to skin, and skin always loses."],
+    fern:[
+      "I found a frostcap under the cedar. It glows a little. I named him Gerald.",
+      "Gerald has a cousin now. Her name is also Gerald. It's a family name.",
+      "Snow squeaks when you walk slow. Walk fast and it just crunches. I keep a list.",
+      "I drew the meadow white on white. Mara says it's blank. It is not blank. It's resting.",
+      "Frogs are gone till spring. I leave them a note by the pond every Sunday, in case they wake up early."],
+    piet:[
+      "Snow's coming down soft. Good building weather - the wood's dry and the days are short.",
+      "Cedar shrinks a hair in the cold. I leave a gap you could slip a coin into, and the roof thanks me in July.",
+      "I sharpen every chisel before the first frost. A dull edge in winter is how you lose a thumb.",
+      "Walk the lane and count the lantern posts. If one leans, tell me. Frost heaves the ground like it owes it money.",
+      "I keep a bench free by the cedar fire. Not for you, exactly. For whoever's coldest."],
   },
+
   // ---------- v2.18 heart events: scenes at 2 and 5 hearts, real rewards ----------
   HEART_EVENTS:{
     mara:[
@@ -1275,7 +1296,7 @@ const Game={
     }
     else if(this.isFairActive()&&this.FAIR_LINES[id]) text=this.FAIR_LINES[id];
     else if(this.festivalEvening()&&this.FESTIVAL_LINES[id]) text=this.FESTIVAL_LINES[id];
-    else if(this.season()===3&&this.WINTER_LINES[id]) text=this.WINTER_LINES[id];
+    else if(this.season()===3&&this.WINTER_LINES[id]) text=this.WINTER_LINES[id][g.day%this.WINTER_LINES[id].length];
     else if(h>=4&&this.HEART_LINES[id]&&g.day%4===3) text=this.HEART_LINES[id];
     else text=def.lines[g.day%def.lines.length];
     const rows=[];
