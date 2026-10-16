@@ -1023,6 +1023,60 @@ const Game={
     fern:"I buried a seed under the snow this morning. Don't ask what kind. Let it surprise us.",
     piet:"Cedar burns slow. Good way to see the old year out without rushing the new one.",
   },
+  // v2.48-local: spring/summer/autumn pools - 4 season lines + the 3 base lines = one distinct line per weekday
+  SEASON_LINES:[
+    { // spring
+      mara:["The thaw gets into everything. Mud on the ledger, mud in the tea. I've stopped minding.",
+            "Spring rule at the stand: buy the seed you'll actually water. Pretty packets lie.",
+            "First warm morning, the whole lane smells like turned earth. I keep the door open and the draft be damned.",
+            "Cloveroot first, always. Let the soil tell you how the year is going before you bet on anything dear."],
+      bram:["Ice goes out of the pond in one night. You hear it. Like a long breath let go.",
+            "Minnows first, then the dace. Fish wake up in the order they're hungry.",
+            "The reeds are green again. A man can stand in them and be a heron for an hour.",
+            "Spring rain is slow rain. Cast into the circles it makes."],
+      fern:["The dandelions came up all at once. It's an ambush. I love it.",
+            "I count crows in spring. Four so far. They count me back, I think.",
+            "Tadpoles in the ditch! Don't step there. I mean it. Don't.",
+            "Mara says plant the whole packet. I say leave a corner for the weeds, they're shy."],
+      piet:["Thaw shows you what the frost did to a fence. Walk yours before you trust it.",
+            "I air the lumber stack in spring. Wood that's been shut up all winter sulks.",
+            "Lantern posts want a fresh coat of oil about now. Cedar drinks it.",
+            "Seven days of sun and I'm on a ladder by sunrise. Ask anyone."]},
+    { // summer
+      mara:["Long days. The stand stays open till the light goes, and so do I.",
+            "Ember melons take nine days and a lot of patience. They pay for both.",
+            "Keep your sunbeans watered before noon. A wilted row at two o'clock is a lesson learned the loud way.",
+            "I put a bucket of water by the stand for the dog. Then the dog told the whole village."],
+      bram:["Summer carp go deep and sulk. Fish the shade side, early or late.",
+            "The pond's warm as tea by noon. I've never trusted it past three.",
+            "Dragonflies on the water mean they're rising. Or the dragonflies are lying.",
+            "Hot days, slow line. Sit under the willow and let the float do the work."],
+      fern:["It's so bright the shadows have shadows. I measured. Mostly.",
+            "I found a plum tree with a plum already ripe, in the wrong month. I'm keeping it secret. Now it's your secret too.",
+            "Fireflies come out right after supper. I catch zero and I tell Mara I caught twelve.",
+            "Barefoot till September. That's my rule, and the meadow knows it."],
+      piet:["Hot weather splits green wood. Season your lumber or it'll tell on you in a year.",
+            "I work the cedar shade side of the yard from noon on. Sun's a poor foreman.",
+            "Summer's the only time the lantern posts stand still. Even the wind gets lazy.",
+            "Drink water before you're thirsty. That's the only advice I charge nothing for."]},
+    { // autumn
+      mara:["Duskberry jars are going up on the shelf. Purple everywhere. The ledger will never be the same.",
+            "Harvest week, I count twice and sell once. Saves arguments.",
+            "Frost is a week off, by my knees. Pull what you can't protect.",
+            "I'm saving back the best seed for next year. A promise to myself, in a jar."],
+      bram:["Leaves on the water make the carp wary. Cast between them, not on them.",
+            "Autumn light slants low and gold. The pond looks like it's been polished.",
+            "Geese were over at dawn, heading south. They never wave. Rude.",
+            "Cold's coming. The fish know it first. Bite's better every morning this week."],
+      fern:["The leaf piles! I'm not saying I jumped in. I'm saying the pile looked different after.",
+            "Wild plums are the last good thing before frost. I eat the sweetest ones first, it's only fair.",
+            "I pressed three leaves in my book. One of them looks like Piet's hat.",
+            "Mushrooms love the damp. Morels come up when you least expect and most deserve them."],
+      piet:["I stack cedar for winter in October. A dry stack is a clear conscience.",
+            "Chimney sweep's due. Mine, and everyone's. Smoke wants a clean road home.",
+            "Hung the first lantern this week. The lane looks different already.",
+            "Fall's for finishing. Anything I didn't finish by summer, I either finish now or admit it."]},
+  ],
   WINTER_LINES:{
     mara:[
       "Winter's for mending nets and counting jars. Frostroot still takes, if you keep it watered - stubborn little thing.",
@@ -1298,6 +1352,7 @@ const Game={
     else if(this.festivalEvening()&&this.FESTIVAL_LINES[id]) text=this.FESTIVAL_LINES[id];
     else if(this.season()===3&&this.WINTER_LINES[id]) text=this.WINTER_LINES[id][g.day%this.WINTER_LINES[id].length];
     else if(h>=4&&this.HEART_LINES[id]&&g.day%4===3) text=this.HEART_LINES[id];
+    else if(this.season()<3&&this.SEASON_LINES[this.season()][id]){ const pool=def.lines.concat(this.SEASON_LINES[this.season()][id]); text=pool[(g.day-1)%7%pool.length]; }
     else text=def.lines[g.day%def.lines.length];
     const rows=[];
     const loved=this.LOVED[id];

@@ -1194,6 +1194,11 @@ async function runAutotest(){
       Game.talkTo('fern');
       if(!Game.WINTER_LINES.fern.some(l=>document.getElementById('menu').textContent.includes(l.slice(0,24)))) throw new Error('no winter line');
       { const seenW=new Set(); for(let d=22;d<=28;d++){ g.day=d; g.seasonCached=Game.season(); Game.talkTo('fern'); seenW.add(document.getElementById('menu').textContent); closeMenu(); } if(seenW.size<5) throw new Error('winter fern lines not varied: '+seenW.size); g.day=23; g.seasonCached=Game.season(); }
+      { // ambient variety per season (fresh-state villager, no heart events)
+        const oh=Game.hearts, on=Game.nextHeartEvent; Game.hearts=()=>0; Game.nextHeartEvent=()=>null; const sv=g.day; try{
+        for(let sIdx=0;sIdx<4;sIdx++){ const seen=new Set(); for(let d=sIdx*7+1;d<=sIdx*7+7;d++){ g.day=d; g.seasonCached=Game.season(); Game.talkTo('bram'); seen.add(document.getElementById('menu').textContent); closeMenu(); }
+          if(seen.size<(sIdx===3?5:7)) throw new Error('season '+sIdx+' bram lines not varied: '+seen.size); }
+        } finally { Game.hearts=oh; Game.nextHeartEvent=on; g.day=sv; g.seasonCached=Game.season(); } }
       closeMenu();
       // journal counts the winter set
       Game.openJournal();
