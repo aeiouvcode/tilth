@@ -756,7 +756,7 @@ const Render={
         ctx.beginPath(); ctx.moveTo(rx-20, ry-10); ctx.lineTo(rx-23, ry-4); ctx.stroke();
       }
       ctx.globalCompositeOperation='multiply';
-      ctx.fillStyle='#d8dcd8'; ctx.fillRect(0,0,cw,ch);
+      ctx.fillStyle='#dde2de'; ctx.fillRect(0,0,cw,ch);
       ctx.globalCompositeOperation='source-over';
     }
     // fireflies at night
@@ -919,9 +919,9 @@ const Render={
         this.hintPill(G, ctx, tx*TILE-camX+TILE/2, ty*TILE-camY, G.player.dir==='down');
       }
     }
-    // constant cozy interior light (day tint does not reach inside)
+    // cozy lamplit interior that still breathes with the hour: dawn lifts, night dims warm, midday keeps the old constant
     ctx.globalCompositeOperation='multiply';
-    ctx.fillStyle='#f2dfc8'; ctx.fillRect(0,0,cw,ch);
+    ctx.fillStyle=interiorTint(G.minutes); ctx.fillRect(0,0,cw,ch);
     ctx.globalCompositeOperation='source-over';
     const vg=ctx.createRadialGradient(cw/2,ch/2,Math.min(cw,ch)*0.35,cw/2,ch/2,Math.max(cw,ch)*0.75);
     vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(20,12,8,0.35)');
@@ -1090,9 +1090,18 @@ function facingTile(p){
   if(tx<0||ty<0||tx>=W||ty>=H)return null;
   return {x:tx,y:ty};
 }
+function interiorTint(min){
+  // lamplit constant with a morning lift: midday equals the old fixed #f2dfc8, dawn opens brighter, night settles warm-dim
+  const stops=[ [0,'#e2c9a8'],[300,'#e2c9a8'],[345,'#f8e6c6'],[450,'#f2dfc8'],[1020,'#f2dfc8'],[1170,'#ecd2b0'],[1230,'#e2c9a8'],[1440,'#e2c9a8'] ];
+  let a=stops[0], b=stops[stops.length-1];
+  for(let i=0;i<stops.length-1;i++){ if(min>=stops[i][0]&&min<=stops[i+1][0]){ a=stops[i]; b=stops[i+1]; break; } }
+  const t=(min-a[0])/Math.max(1,(b[0]-a[0]));
+  const ca=hex2rgb(a[1]), cb=hex2rgb(b[1]);
+  return `rgb(${Math.round(lerp(ca[0],cb[0],t))},${Math.round(lerp(ca[1],cb[1],t))},${Math.round(lerp(ca[2],cb[2],t))})`;
+}
 function lightTint(min){
   // timeline of tint colors by hour
-  const stops=[ [0,'#7d7dae'],[300,'#8d85b0'],[345,'#e0a984'],[450,'#ffe8c4'],[720,'#ffffff'],[1020,'#ffeed6'],[1110,'#f0b890'],[1170,'#d89a80'],[1230,'#9890b8'],[1440,'#7d7dae'] ];
+  const stops=[ [0,'#7d7dae'],[300,'#8d85b0'],[345,'#eec59a'],[450,'#ffedc8'],[720,'#ffffff'],[1020,'#ffeed6'],[1110,'#f0b890'],[1170,'#d89a80'],[1230,'#9890b8'],[1440,'#7d7dae'] ];
   let a=stops[0], b=stops[stops.length-1];
   for(let i=0;i<stops.length-1;i++){ if(min>=stops[i][0]&&min<=stops[i+1][0]){ a=stops[i]; b=stops[i+1]; break; } }
   const t=(min-a[0])/Math.max(1,(b[0]-a[0]));

@@ -19,12 +19,19 @@ function swish(){ tone(700,0.06,'sawtooth',0.02); }
 function nudge(msg){ toast(msg); tone(180,0.08,'square',0.03); }
 
 // ---------- toast ----------
+const TOASTQ=[];
 function toast(msg){
   const w=document.getElementById('toast-wrap');
-  const d=document.createElement('div'); d.className='toast'; d.textContent=msg;
-  w.appendChild(d);
-  setTimeout(()=>{ d.classList.add('out'); setTimeout(()=>d.remove(),450); }, 2400);
-  while(w.children.length>3) w.firstChild.remove();
+  if([...w.children].some(d=>d.textContent===msg)||TOASTQ.includes(msg)) return; // the same line never stacks
+  TOASTQ.push(msg); pumpToasts();
+}
+function pumpToasts(){
+  const w=document.getElementById('toast-wrap');
+  while(w.children.length<2&&TOASTQ.length){ // two at a time, the rest queue in order
+    const d=document.createElement('div'); d.className='toast'; d.textContent=TOASTQ.shift();
+    w.appendChild(d);
+    setTimeout(()=>{ d.classList.add('out'); setTimeout(()=>{ d.remove(); pumpToasts(); },450); }, 2400);
+  }
 }
 
 // ---------- menu ----------
@@ -234,7 +241,7 @@ function boot(){
   document.getElementById('btn-new').addEventListener('click',()=>start(false));
   document.getElementById('btn-continue').addEventListener('click',()=>start(true));
   drawTitleArt();
-  if(qs.get('autotest')){ start(false); runAutotest(); return; }
+  if(qs.get('autotest')){ window.__TILTH_AUTOTEST=1; start(false); runAutotest(); return; }
   if(!qs.get('shot')&&!qs.get('fps')) drawTitleArt();
   if(qs.get('fps')){
     start(false);
@@ -683,6 +690,57 @@ async function runAutotest(){
     Game.sleep(); // a quiet morning: nothing shipped, no ledger
     if(!document.getElementById('menu').classList.contains('hidden')) throw new Error('empty crate still opened the ledger');
   },'crate DOM sell flow');
+  step(()=>{ // collapse: bed-side wake + reduced energy; normal sleep untouched
+    g=Game.G;
+    g.indoor=false; g.inCave=false; g.player.x=40*TILE; g.player.y=20*TILE; g.minutes=DAY_END-1;
+    Game.update(1500, Date.now()); // the clock crosses midnight for real
+    if(!g.indoor) throw new Error('collapse left the player outdoors');
+    if(Math.abs(g.player.x-3.5*TILE)>1||Math.abs(g.player.y-2.5*TILE)>1) throw new Error('collapse did not wake beside the bed');
+    if(g.energy!==50) throw new Error('collapse without an energy cost: '+g.energy);
+    g.indoor=false; Game.sleep(false);
+    if(g.energy!==100) throw new Error('normal sleep stopped restoring fully');
+    if(g.indoor) throw new Error('normal sleep relocated the player');
+  },'collapse wake + cost');
+  step(()=>{ // toasts: same line never stacks, the rest queue two at a time
+    const w=document.getElementById('toast-wrap'); w.innerHTML=''; TOASTQ.length=0;
+    toast('dedupe me'); toast('dedupe me');
+    if(w.children.length!==1) throw new Error('same toast stacked: '+w.children.length);
+    toast('two'); toast('three'); toast('four');
+    if(w.children.length!==2) throw new Error('toast cap broke: '+w.children.length);
+    if(TOASTQ.length!==2) throw new Error('toast queue broke: '+TOASTQ.length);
+    w.innerHTML=''; TOASTQ.length=0;
+  },'toast dedupe + queue');
+  step(()=>{ // ledger: total pinned first, rows capped at 6 with '+N more', forecast row present
+    g=Game.G;
+    g.produce={}; for(const id of Object.keys(ITEMS).slice(0,8)) g.produce[id]=1;
+    Game.openCrateMenu();
+    document.querySelectorAll('#menu-items .menu-row').forEach(r=>r.dispatchEvent(new MouseEvent('click',{bubbles:true})));
+    Game.sleep();
+    const rows=document.querySelectorAll('#menu-items .menu-row');
+    if(rows.length!==10) throw new Error('ledger rows uncapped: '+rows.length); // total + today + 6 items + rollup + close
+    if(!rows[0].textContent.includes('paid at dawn')) throw new Error('total not pinned first');
+    if(!document.getElementById('menu').textContent.includes('and 2 more')) throw new Error('overflow rollup missing');
+    if(!document.getElementById('menu').textContent.includes('today')) throw new Error('forecast row missing');
+    closeMenu();
+  },'ledger cap + pinned total + forecast');
+  step(()=>{ // rainy mornings speak even without a sale
+    g=Game.G;
+    let rd=g.day; while(Game.weatherForDay(rd+1)!=='rain') rd++;
+    g.day=rd; g.pendingSale=0; g.pendingItems={};
+    const w=document.getElementById('toast-wrap'); w.innerHTML=''; TOASTQ.length=0;
+    Game.sleep();
+    if(![...w.children].some(d=>d.textContent.includes('rain all morning'))&&!TOASTQ.some(t=>t.includes('rain all morning'))) throw new Error('quiet rainy morning stayed silent');
+    w.innerHTML=''; TOASTQ.length=0;
+  },'rainy morning beat');
+  step(()=>{ // interior wake: the room's light actually changes with the hour (rendered pixels, full-canvas mean luma)
+    g=Game.G; const oi=g.indoor, om=g.minutes; g.indoor=true;
+    const shot=(m)=>{ g.minutes=m; Render.draw(g,1000); const d=Render.ctx.getImageData(0,0,Render.canvas.width,Render.canvas.height).data;
+      let sum=0; for(let i=0;i<d.length;i+=4) sum+=d[i]*0.3+d[i+1]*0.6+d[i+2]*0.1; return sum/(d.length/4); };
+    const dawn=shot(360), night=shot(1230), midday=shot(600);
+    g.indoor=oi; g.minutes=om;
+    if(Math.abs(dawn-night)<2) throw new Error('interior no longer wakes with the dawn (rendered)');
+    if(Math.abs(dawn-midday)>25) throw new Error('dawn interior drifted too far from midday');
+  },'interior dawn wash');
   step(()=>{ // morning grade: rose dawn lifts to golden morning, noon passes through
     const rgb=m=>(lightTint(m)||'rgb(255,255,255)').match(/\d+/g).map(Number);
     if(lightTint(720)!==null) throw new Error('noon tint should pass through');

@@ -711,15 +711,21 @@ const Game={
   },
   refreshMenu(){ closeMenu(); this.openShop(); },
 
-  showDawnLedger(items, total){
+  showDawnLedgerSoon(items, total, weather){
+    if(window.__TILTH_AUTOTEST){ this.showDawnLedger(items, total, weather); return; }
+    setTimeout(()=>this.showDawnLedger(items, total, weather), 1250); // the card lands as the fade lifts, not behind it
+  },
+  showDawnLedger(items, total, weather){
     const g=this.G;
-    const rows=items.map(([id,v])=>({ label:ITEMS[id].name, desc:'shipped x'+v.n, price:v.val+'g',
-      icon:SPR.item[id]||SPR.forage[id]||(CROPS[id]?SPR.crop(CROPS[id],3):null), pick:()=>{} }));
-    rows.push({label:'paid at dawn', desc:'the crate by your door', price:'+'+total+'g', pick:()=>{}});
+    const rows=[{label:'paid at dawn', desc:'the crate by your door', price:'+'+total+'g', pick:()=>{}}];
+    rows.push({label:'today', desc:weather==='rain'?'rain — the fields water themselves':'clear skies', price:'', pick:()=>{}});
+    for(const [id,v] of items.slice(0,6)) rows.push({ label:ITEMS[id].name, desc:'shipped x'+v.n, price:v.val+'g',
+      icon:SPR.item[id]||SPR.forage[id]||(CROPS[id]?SPR.crop(CROPS[id],3):null), pick:()=>{} });
+    if(items.length>6) rows.push({label:'and '+(items.length-6)+' more', desc:'counted and paid', price:'', pick:()=>{}});
     rows.push({label:'close', desc:'', price:'', pick:()=>closeMenu()});
     openMenu(`day ${g.day} — the crate went out at dawn`, rows);
   },
-  sleep(){
+  sleep(collapsed){
     const g=this.G;
     // tonight's weather decides whether the fields water themselves
     const nextWeather=this.weatherForDay(g.day+1);
@@ -740,7 +746,8 @@ const Game={
     const soldTotal=g.pendingSale, soldItems=Object.entries(g.pendingItems||{}).filter(([id,v])=>v&&v.n>0);
     if(soldTotal>0){ g.coins+=soldTotal; g.lifetimeEarned+=soldTotal; g.pendingSale=0; }
     g.pendingItems={};
-    g.day++; g.minutes=DAY_START; g.energy=100; g.giftsToday={};
+    g.day++; g.minutes=DAY_START; g.energy=collapsed?50:100; g.giftsToday={};
+    if(collapsed){ g.indoor=true; g.inCave=false; g.player.x=3.5*TILE; g.player.y=2.5*TILE; g.player.dir='down'; }
     if(g.fieldSeasonPending>=0){ if(this.seasonOf(g.day-1)===g.fieldSeasonPending&&!g.fieldSeasons.includes(g.fieldSeasonPending))g.fieldSeasons.push(g.fieldSeasonPending);g.fieldSeasonPending=-1; }
     g.forage.clear(); this.spawnForage(2+Math.floor(Math.random()*3));
     this.layEggs();
@@ -763,7 +770,8 @@ const Game={
     for(let l=1;l<=3;l++) this.spawnNodes(l); // the cave shifts overnight
     this.save();
     fadeSleep();
-    if(soldTotal>0) this.showDawnLedger(soldItems, soldTotal);
+    if(soldTotal>0) this.showDawnLedgerSoon(soldItems, soldTotal, nextWeather);
+    else if(nextWeather==='rain') toast('rain all morning — the fields water themselves');
   },
 
   NPCS:{
@@ -1634,7 +1642,7 @@ const Game={
     if(!menuOpen()){
       // time
       g.minutes+=dt/1000; // 1s = 1 min
-      if(g.minutes>=DAY_END){ toast('you collapse from the late hour...'); this.sleep(); }
+      if(g.minutes>=DAY_END){ toast('you collapse from the late hour...'); this.sleep(true); }
       if(!g.hintedRest&&g.minutes>=1060){ g.hintedRest=true; toast('evening - rest in your bed at home to end the day'); }
       if(!g.hintedTired&&g.energy>0&&g.energy<=25){ g.hintedTired=true; toast('running low - sleep at home restores you'); }
     }
