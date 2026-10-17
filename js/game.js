@@ -334,9 +334,9 @@ const Game={
       return;
     }
     const f=facingTile(g.player); if(!f)return;
-    if(this.tooTired()) return;
     const tool=TOOLS[g.tool].id, t=this.tileAt(f.x,f.y), key=f.y*W+f.x, crop=g.crops.get(key);
     if(tool==='hoe'){
+      if(this.tooTired()) return;
       const tiles=g.toolTier.hoe>0?this.wideRow(f,g.toolTier.hoe):[f];
       let tilled=0;
       for(const p of tiles){
@@ -346,6 +346,7 @@ const Game={
       if(tilled){ g.stats.hoed+=tilled; this.spendEnergy([2,3,4][g.toolTier.hoe]); thud(); }
       else nudge('needs clear grass');
     } else if(tool==='can'){
+      if(this.tooTired()) return;
       const tiles=g.toolTier.can>0?this.wideRow(f,g.toolTier.can):[f];
       let wet=0;
       for(const p of tiles){
@@ -357,13 +358,14 @@ const Game={
       if(wet){ g.stats.watered+=wet; this.spendEnergy([1,2,3][g.toolTier.can]); splash(); }
       else nudge('nothing to water');
     } else if(tool==='seeds'){
+      if(this.tooTired()) return;
       if((t===T.SOIL||t===T.SOILWET)&&!crop){ this.openPlantMenu(f.x,f.y); }
       else nudge('needs tilled soil');
     } else if(tool==='hand'){
       const fg=g.forage.get(key);
-      if(crop&&crop.stage>=3){ this.harvest(f.x,f.y,crop); }
-      else if(fg){ g.forage.delete(key); g.produce[fg.id]=(g.produce[fg.id]||0)+1; g.stats.foraged++; this.addXP('forage',1); this.discover(fg.id); this.spendEnergy(1); chime(700); toast(`+1 ${ITEMS[fg.id].name}`); }
-      else if(g.eggs[key]){ const egg=g.eggs[key]==='sunegg'?'sunegg':'egg'; delete g.eggs[key]; g.produce[egg]=(g.produce[egg]||0)+1; this.addXP('forage',1); this.discover(egg); this.spendEnergy(1); chime(700); toast('+1 '+ITEMS[egg].name); }
+      if(crop&&crop.stage>=3){ if(this.tooTired()) return; this.harvest(f.x,f.y,crop); }
+      else if(fg){ if(this.tooTired()) return; g.forage.delete(key); g.produce[fg.id]=(g.produce[fg.id]||0)+1; g.stats.foraged++; this.addXP('forage',1); this.discover(fg.id); this.spendEnergy(1); chime(700); toast(`+1 ${ITEMS[fg.id].name}`); }
+      else if(g.eggs[key]){ if(this.tooTired()) return; const egg=g.eggs[key]==='sunegg'?'sunegg':'egg'; delete g.eggs[key]; g.produce[egg]=(g.produce[egg]||0)+1; this.addXP('forage',1); this.discover(egg); this.spendEnergy(1); chime(700); toast('+1 '+ITEMS[egg].name); }
       else if(t===T.COOP||t===T.BARN){ this.openPenLedger(); }
       else if(this.nearCow()){ this.openCowCare(); }
       else if(this.nearHen()!==-1){ this.petAnimal('hen'+this.nearHen()); }
@@ -389,10 +391,10 @@ const Game={
     } else if(tool==='rod'){
       this.castRod(f);
     } else if(tool==='pick'){
-      if(t===T.ROCK){ g.grid[f.y*W+f.x]=T.GRASS; g.produce.pitstone=(g.produce.pitstone||0)+1; g.stats.mined=(g.stats.mined||0)+1; this.spendEnergy([3,2,1][g.toolTier.pick]); thud(); toast('+1 Pit Stone'); }
+      if(t===T.ROCK){ if(this.tooTired()) return; g.grid[f.y*W+f.x]=T.GRASS; g.produce.pitstone=(g.produce.pitstone||0)+1; g.stats.mined=(g.stats.mined||0)+1; this.spendEnergy([3,2,1][g.toolTier.pick]); thud(); toast('+1 Pit Stone'); }
       else nudge('nothing to break here');
     } else if(tool==='scythe'){
-      if(crop){ g.crops.delete(key); if(this.tileAt(f.x,f.y)===T.SOILWET)g.grid[f.y*W+f.x]=T.SOIL; this.spendEnergy(2); swish(); toast('cleared'); }
+      if(crop){ if(this.tooTired()) return; g.crops.delete(key); if(this.tileAt(f.x,f.y)===T.SOILWET)g.grid[f.y*W+f.x]=T.SOIL; this.spendEnergy(2); swish(); toast('cleared'); }
       else nudge('nothing to clear');
     }
   },
@@ -787,7 +789,10 @@ const Game={
     if(wakeFee>0) toast('someone walked you home - they took '+wakeFee+'g for the trouble', true);
     else if(wakeFee<0) toast('someone walked you home - they waved off the coin', true);
     if(soldTotal>0) this.showDawnLedgerSoon(soldItems, soldTotal, nextWeather, grew);
-    else if(nextWeather==='rain') toast('rain all morning — the fields water themselves');
+    else {
+      if(nextWeather==='rain') toast('rain all morning — the fields water themselves');
+      if(grew>0) toast(grew+(grew===1?' crop':' crops')+' grew overnight');
+    }
   },
 
   NPCS:{
@@ -1613,6 +1618,7 @@ const Game={
     const g=this.G;
     if(g.fishing){ this.reelIn(); return; }
     if(this.tileAt(f.x,f.y)!==T.WATER){ nudge('cast onto water'); return; }
+    if(this.tooTired()) return;
     this.spendEnergy(2);
     g.fishing={x:f.x, y:f.y, state:'waiting', t:2+Math.random()*4, fish:this.rollFish()};
     splash(); toast('cast... wait for the pull');

@@ -751,6 +751,16 @@ async function runAutotest(){
     if(!document.getElementById('menu').textContent.includes('1 crop grew')) throw new Error('overnight grow line missing');
     closeMenu(); g.crops=new Map();
   },'ledger cap + pinned total + forecast');
+  step(()=>{ // quiet sunny morning with growth gets its small line
+    g=Game.G; const oc=g.crops, om=g.minutes; try{
+      let sd=g.day; while(Game.weatherForDay(sd+1)==='rain') sd++;
+      g.day=sd; g.minutes=600; g.crops=new Map([[900,{id:'cloveroot',age:1,stage:1,watered:true}]]);
+      g.pendingSale=0; g.pendingItems={};
+      const w=document.getElementById('toast-wrap'); w.innerHTML=''; TOASTQ.length=0;
+      Game.sleep();
+      if(![...w.children].some(d=>d.textContent.includes('grew overnight'))&&!TOASTQ.some(q=>q.msg.includes('grew overnight'))) throw new Error('quiet growth morning stayed silent');
+      w.innerHTML=''; TOASTQ.length=0;
+    } finally { g.crops=oc; g.minutes=om; } },'quiet growth morning');
   step(()=>{ // rainy mornings speak even without a sale
     g=Game.G;
     let rd=g.day; while(Game.weatherForDay(rd+1)!=='rain') rd++;
@@ -782,6 +792,37 @@ async function runAutotest(){
     g.weather=ow; g.indoor=oi; g.minutes=om;
     if(rainC-sunC<4) throw new Error('indoor rain cue invisible (rendered): '+(rainC-sunC).toFixed(1));
   },'indoor rain cue');
+  step(()=>{ // zero energy outdoors: home, crate, mailbox, stand, NPCs and the reel still answer; only labor refuses
+    g=Game.G; const oTool=g.tool, oLetters=g.letters, oFish=g.fishing, oE=g.energy, oEx=g.exhausted, oIn=g.indoor, oM=g.minutes, oP={x:g.player.x,y:g.player.y,dir:g.player.dir}, oH=Game.hearts; try{
+      g.energy=0; g.exhausted=true; g.indoor=false; g.inCave=false; g.fishing=null;
+      const find=(tile)=>{ for(let y=0;y<H;y++)for(let x=0;x<W;x++) if(g.grid[y*W+x]===tile) return {x,y}; };
+      const face=(x,y,dir)=>{ g.player.x=x*TILE+8; g.player.y=y*TILE+8; g.player.dir=dir; };
+      g.tool=TOOLS.findIndex(t=>t.id==='hand');
+      const dm=find(T.DOORMAT); face(dm.x,dm.y+1,'up'); Game.useTool();
+      if(!g.indoor) throw new Error('front door refused at zero energy');
+      g.indoor=false;
+      const cr=find(T.CRATE); face(cr.x,cr.y+1,'up'); Game.useTool();
+      if(!document.getElementById('menu').textContent.includes('crate')) throw new Error('crate refused at zero energy'); closeMenu();
+      g.letters=[{id:'t0',from:'Mara',subject:'t',body:'b',read:false}];
+      const mb=find(T.MAILBOX); face(mb.x,mb.y+1,'up'); Game.useTool();
+      if(document.getElementById('menu').classList.contains('hidden')) throw new Error('mailbox refused at zero energy'); closeMenu();
+      const st=find(T.STAND); face(st.x,st.y+1,'up'); Game.useTool();
+      if(document.getElementById('menu').classList.contains('hidden')) throw new Error('stand refused at zero energy'); closeMenu();
+      Game.hearts=()=>0; g.player.x=Game.G.mara.x; g.player.y=Game.G.mara.y+TILE; g.player.dir='up'; Game.useTool();
+      if(document.getElementById('menu').classList.contains('hidden')) throw new Error('Mara refused a word at zero energy'); closeMenu();
+      // a cast that spends the last energy must still be reelable
+      const wt=find(T.WATER); g.energy=2; g.fishing=null;
+      g.tool=TOOLS.findIndex(t=>t.id==='rod');
+      g.player.x=wt.x*TILE+8; g.player.y=(wt.y+1)*TILE+8; g.player.dir='up';
+      Game.useTool();
+      if(!g.fishing) throw new Error('cast failed at last energy');
+      if(g.energy!==0) throw new Error('cast did not spend the last energy');
+      Game.useTool(); // the reel, not a fresh cast
+      if(g.fishing) throw new Error('reel refused at zero energy');
+      Game.useTool(); // line is in; a fresh cast IS labor
+      if(g.fishing) throw new Error('fresh cast allowed at zero energy');
+    } finally { g.tool=oTool; g.letters=oLetters; g.fishing=oFish; g.energy=oE; g.exhausted=oEx; g.indoor=oIn; g.minutes=oM; g.player.x=oP.x; g.player.y=oP.y; g.player.dir=oP.dir; Game.hearts=oH; closeMenu(); }
+  },'zero-energy access + reel');
   step(()=>{ // toasts hold while a card owns the screen, then drain on close
     g=Game.G; const w=document.getElementById('toast-wrap'); w.innerHTML=''; TOASTQ.length=0;
     g.produce={cloveroot:1}; Game.openCrateMenu();
