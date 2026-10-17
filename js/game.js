@@ -988,11 +988,52 @@ const Game={
     return Math.hypot(g.player.x-n.x,g.player.y-n.y)<TILE*1.7;
   },
   LOVED:{ mara:'sunbean', bram:'duskcarp', fern:'morel', piet:'embermelon' },
+  // Heart-tier ambient pools: on day%4===3 a villager speaks from the highest tier reached (2/4/6/8 hearts), rotating by day. Original writing, in-voice; the legacy 4-heart lines live on inside the h4 pools.
   HEART_LINES:{
-    mara:"You know, the stand does better since you came. The valley does too.",
-    bram:"You're good company, farmer. The pond says so, and the pond doesn't lie.",
-    fern:"I saved you the biggest morel spot. Don't tell the crows.",
-    piet:"When that barn goes up, your name goes in the beam. That's how we do it.",
+    mara:{
+      h2:["You're learning the rhythm of it. The field can tell when hands are new, and it's patient with yours.",
+          "Saw your rows from the stand. Straighter this week. Don't tell the soil I said so."],
+      h4:["You know, the stand does better since you came. The valley does too.",
+          "I set aside the good seed for you now, the fat kernels. You've earned the fussy stuff.",
+          "My mother used to say a farm is a promise you keep every morning. You're keeping it."],
+      h6:["When you first came I gave you the beginner's speech. These days I ask your opinion on seed stock. Imagine that.",
+          "The quiet weeks don't worry me anymore. You'll be out there at dawn either way."],
+      h8:["If the stand ever passes to me in full, I'd want you checking the seed jars with me. That's not a small offer.",
+          "You farm like someone who plans to stay. The valley notices that more than you'd think."],
+    },
+    bram:{
+      h2:["You hold the rod steadier than most who come by. The pond appreciates a still hand.",
+          "Come by the water more often and I'll start telling you the real spots. Some of them are even true."],
+      h4:["You're good company, farmer. The pond says so, and the pond doesn't lie.",
+          "You've sat with me long enough that the herons take you for a fixture. High honor, that.",
+          "The dusk carp know your shadow now. They still bite. That's trust, pond rules."],
+      h6:["I've taught three people to fish in forty years. You're the only one who learned to be quiet first.",
+          "When I'm gone the pond keeps my spot warm for about a day. Then it's yours, I expect."],
+      h8:["I don't say this to many: the fishing's better with you here, even when we catch nothing.",
+          "You're the closest thing the pond has to a second old angler. Take that as you will."],
+    },
+    fern:{
+      h2:["You're getting quieter feet in the meadow. The morels won't know what hit them.",
+          "I saw your sketch weather in the field margins. Keep walking slow and it'll fill in."],
+      h4:["I saved you the biggest morel spot. Don't tell the crows.",
+          "I drew your scarecrow from memory. It came out kinder than the real one.",
+          "You can help me chase the crows off the plum trees anytime. You're almost as loud as them."],
+      h6:["My book has a whole page of your farm now. The pond, the stand, your leaning fence. It's my favorite chapter.",
+          "I used to draw alone. It's better with someone to describe the light to."],
+      h8:["When I press flowers this winter, the best one goes in your chapter. That's how the book says thank you.",
+          "You're the only person I'd trust with my morel map. It's in my head, so you'll have to keep walking with me."],
+    },
+    piet:{
+      h2:["You keep your tools cleaner than most new farmers. Tools remember, same as fences.",
+          "That cottage was due a careful owner. Wood knows."],
+      h4:["When that barn goes up, your name goes in the beam. That's how we do it.",
+          "I checked your fence line on my way past. It's holding straighter. You've been mending.",
+          "I keep a cedar plank aside for you. Good grain, no knots. For when you need it."],
+      h6:["Forty years of roofs and I'll tell you straight: I'd build beside you any day of the week.",
+          "You've got builder's patience now. Measure twice, cut once, no shortcuts on the load-bearing parts."],
+      h8:["Someday I'll teach you the dovetail joint I won't show anyone else. Someday soon, maybe.",
+          "This valley's held up by people who show up. You show up. That's the whole trick."],
+    },
   },
   hearts(id){ return Math.floor((this.G.friendship[id]||0)/2); },
   giftTo(id){
@@ -1351,7 +1392,11 @@ const Game={
     else if(this.isFairActive()&&this.FAIR_LINES[id]) text=this.FAIR_LINES[id];
     else if(this.festivalEvening()&&this.FESTIVAL_LINES[id]) text=this.FESTIVAL_LINES[id];
     else if(this.season()===3&&this.WINTER_LINES[id]) text=this.WINTER_LINES[id][g.day%this.WINTER_LINES[id].length];
-    else if(h>=4&&this.HEART_LINES[id]&&g.day%4===3) text=this.HEART_LINES[id];
+    else if(h>=2&&g.day%4===3&&this.HEART_LINES[id]){
+      const tiers=[['h8',8],['h6',6],['h4',4],['h2',2]].filter(([k,n])=>h>=n&&this.HEART_LINES[id][k]);
+      const pool=tiers.length?this.HEART_LINES[id][tiers[0][0]]:def.lines;
+      text=pool[(g.day>>2)%pool.length];
+    }
     else if(this.season()<3&&this.SEASON_LINES[this.season()][id]){ const pool=def.lines.concat(this.SEASON_LINES[this.season()][id]); text=pool[(g.day-1)%7%pool.length]; }
     else text=def.lines[g.day%def.lines.length];
     const rows=[];

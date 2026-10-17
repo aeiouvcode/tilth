@@ -1199,6 +1199,25 @@ async function runAutotest(){
         for(let sIdx=0;sIdx<4;sIdx++){ const seen=new Set(); for(let d=sIdx*7+1;d<=sIdx*7+7;d++){ g.day=d; g.seasonCached=Game.season(); Game.talkTo('bram'); seen.add(document.getElementById('menu').textContent); closeMenu(); }
           if(seen.size<(sIdx===3?5:7)) throw new Error('season '+sIdx+' bram lines not varied: '+seen.size); }
         } finally { Game.hearts=oh; Game.nextHeartEvent=on; g.day=sv; g.seasonCached=Game.season(); } }
+      { // heart-tier ambient pools: locked at 0 hearts, resolve to highest reached tier, rotate within pool
+        const oh=Game.hearts, on=Game.nextHeartEvent; Game.nextHeartEvent=()=>null; const sv=g.day; try{
+          for(const [h,tier] of [[2,'h2'],[4,'h4'],[6,'h6'],[8,'h8'],[10,'h8']]){
+            Game.hearts=()=>h; const pool=Game.HEART_LINES.bram[tier];
+            for(const d of [3,7,11,15]){ g.day=d; g.seasonCached=Game.season();
+              if(Game.season()===3||Game.isFairActive()||Game.festivalEvening()) continue;
+              Game.talkTo('bram'); const t=document.getElementById('menu').textContent; closeMenu();
+              if(!pool.some(l=>t.includes(l.slice(0,24)))) throw new Error('h'+h+' bram heart line not from '+tier+': '+t.slice(0,40)); } }
+          Game.hearts=()=>0;
+          for(const d of [3,7,11,15]){ g.day=d; g.seasonCached=Game.season();
+            if(Game.season()===3||Game.isFairActive()||Game.festivalEvening()) continue;
+            Game.talkTo('bram'); const t=document.getElementById('menu').textContent; closeMenu();
+            for(const tier of ['h2','h4','h6','h8']) for(const l of Game.HEART_LINES.bram[tier])
+              if(t.includes(l.slice(0,24))) throw new Error('heart line leaked at 0 hearts: '+l.slice(0,30)); }
+          for(const id of Object.keys(Game.NPCS)) for(const tier of ['h2','h4','h6','h8']){
+            const p=Game.HEART_LINES[id][tier];
+            if(!p||p.length<(tier==='h4'?3:2)) throw new Error(id+' '+tier+' pool too small');
+            if(new Set(p).size!==p.length) throw new Error(id+' '+tier+' has a duplicate line'); }
+        } finally { Game.hearts=oh; Game.nextHeartEvent=on; g.day=sv; g.seasonCached=Game.season(); } }
       closeMenu();
       // journal counts the winter set
       Game.openJournal();
