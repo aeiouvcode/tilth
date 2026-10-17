@@ -988,13 +988,21 @@ const Game={
     return Math.hypot(g.player.x-n.x,g.player.y-n.y)<TILE*1.7;
   },
   LOVED:{ mara:'sunbean', bram:'duskcarp', fern:'morel', piet:'embermelon' },
-  // Heart-tier ambient pools: on day%4===3 (every odd day at 10 hearts) a villager speaks from the union of every tier they have reached (top tier double-weighted), never repeating the previous heart line; heart lines take the slot even in winter. Original writing, in-voice; the legacy 4-heart lines live on inside the h4 pools. Voices kept apart: Mara = coin, customers, dry asides; Bram = tall tales admitted, grump, aches; Fern = scattered, crow rivalry, drawing failures; Piet = blunt craft talk, anti-sentiment.
+  // Heart-tier ambient pools: on cadence days (every 4th day, every odd day at 10 hearts; halved in winter so winter lines keep a share) a villager speaks from the union of every tier they have reached (top tier double-weighted), stepping one line per firing day so every line is reachable, never repeating the previous heart line. Original writing, in-voice; the legacy 4-heart lines live on inside the h4 pools. Voices kept apart: Mara = coin, customers, dry asides; Bram = tall tales admitted, grump, aches; Fern = scattered, crow rivalry, drawing failures; Piet = blunt craft talk, anti-sentiment.
+  // Rain-day heart lines: join the pool only while it is actually raining.
+  RAIN_HEART_LINES:{
+    mara:"Rain days the stand goes quiet. I count the jars and let it.",
+    bram:"Rain makes the light go soft all day. The pond bites best in a soft light.",
+    fern:"Rain means drawing inside. The book's indoor pages are my least favorite.",
+    piet:"Rain means no mortar. I sharpen things and complain. Both needed doing.",
+  },
   HEART_LINES:{
     mara:{
       h2:["If you ever have spare crates, I pay back in seed. Mine split every time it rains.",
           "A customer tried to haggle me down yesterday. I told her the price is the price. She bought two.",
           "The stand leaks at the north corner. Piet says he'll look at it. He's said that since spring."],
       h4:["The stand does better these days. The valley does too.",
+          "I worried over the seed-order money all week. That's not for customers to know.",
           "I set aside the good seed for you now, the fat kernels. You've earned the fussy stuff.",
           "My mother used to say a farm is a promise you keep every morning. You're keeping it."],
       h6:["When you first came I gave you the beginner's speech. These days I ask your opinion on seed stock. Imagine that.",
@@ -1002,6 +1010,7 @@ const Game={
           "Some mornings I still set out my mother's ledger before I remember. Then I open the stand anyway."],
       h8:["My mother would have argued with you about spacing. She argued with everyone about spacing. I think she'd have lost.",
           "Piet says I charge too little for seed. I say he charges too much for nails. We're both right.",
+          "Next year I want two stands - one at the road end. I've paced the spot twice.",
           "I almost sold a crate of old stock my first spring running the stand. My mother caught it. I check the dates to this day."],
       h10:["I saved you the first crate of cloveroot this spring before I remembered you grow your own now.",
            "One of these days I'm taking a whole day off in the high grass, and I won't say where.",
@@ -1014,6 +1023,7 @@ const Game={
           "Come by the water more often and I'll start telling you the real spots. Some of them are even true.",
           "Don't wave at me from the far bank. If I want company, I'll be at the near one."],
       h4:["You're good company, farmer. The pond says so, and the pond doesn't lie.",
+          "The fire's company most nights. Some nights it isn't, and those are longer.",
           "Evenings get long once the herons turn in. I eat by the fire and call it enough.",
           "Everyone asks me when the dusk carp show. If I told them straight, they'd have nothing to learn patience on."],
       h6:["I've taught three people to fish in forty years. You're the only one who learned to be quiet first.",
@@ -1021,7 +1031,8 @@ const Game={
           "My knee says rain before the clouds do. It's wrong half the time, but I've stopped arguing with it."],
       h8:["I don't say this to many: the fishing's better with you here, even when we catch nothing.",
           "The calm side of the pond is yours when you want it. I've stopped fishing that side myself.",
-          "Most people reel too fast. There, I've said it. Watch a man who doesn't."],
+          "Most people reel too fast. There, I've said it. Watch a man who doesn't.",
+          "I keep a page of the good days. This year's page is longer than last year's."],
       h10:["I fished alone most of my life and called it preference. Company proved it was only habit.",
            "There's a deep spot past the reeds I keep to myself. You can fish anywhere else.",
            "The spare rod is spoken for by nobody yet. My hands will decide when.",
@@ -1033,14 +1044,16 @@ const Game={
           "Tried to draw in the rain yesterday. The ink ran before I got a single line down.",
           "A magpie followed me home yesterday. I named him Inkcap and now I can't get rid of him."],
       h4:["I saved you the biggest morel spot. Don't tell the crows.",
+          "I don't show everyone the book. People smile at drawings the way they smile at weather.",
           "I drew your scarecrow from memory. It came out kinder than the real one.",
-          "You can help me haul the plum baskets down at harvest. They're heavier than they look and I'll deny saying so."],
+          "You can help me haul the plum baskets down at harvest. They're heavier than they look, and I usually pretend they aren't."],
       h6:["My book has a whole page of your farm now. The pond, the stand, your leaning fence. It's my favorite chapter.",
           "Someone laughed at my drawings once, at the stand. I kept them under my bed for a year after that.",
+          "I was scared of the pond until I was twelve. I still only wade. Swimming is for people the water likes.",
           "Mara says my drawings make her stand look crooked. We argue about it most weeks."],
       h8:["I loaned Bram my book once and he used it to prop up a fishing crate, and when I objected he said the book seemed happy to be useful.",
           "You're the only person I'd trust with my morel map. It's in my head, so you'll have to keep walking with me.",
-          "I sketched your fence from the hill. Piet looked at it and said 'west lean.' He talks about your fence more than you do."],
+          "Next spring I'm painting the whole valley from the hill, one canvas a week. I've told the canvas, so now I have to."],
       h10:["I forgot lunch yesterday because the light on the pond went gold. It happens more than I admit.",
            "I want to draw every roof in the valley one day. Yours first, because it sits still for me.",
            "I traded Mara a basket of plums for her empty seed jars. The jars are for buttons and beetle shells.",
@@ -1052,6 +1065,7 @@ const Game={
           "Rain held up my mortar work all week. Mortar keeps its own schedule and it's never yours.",
           "Mara's stand roof is third on my list and she knows it. She brings me plums anyway. Smart woman."],
       h4:["If you ever raise a barn, your name goes in the beam. That's how we do it.",
+          "Work's been thin this season. On thin seasons I mend my own things first.",
           "Everything on this lane wants mending at once, and I am one pair of hands.",
           "I keep a cedar plank aside for you. Good grain, no knots. For when you need it."],
       h6:["Mara and I didn't speak for a whole winter once. Over nails. Neither of us remembers which nails.",
@@ -1059,11 +1073,12 @@ const Game={
           "People think I work in silence because I like quiet. I just like hearing a joint go home."],
       h8:["Someday I'll teach you the dovetail joint I won't show anyone else. Someday soon, maybe.",
           "People ask what a joint costs. Almost nobody asks why it holds. The why is the interesting part.",
+          "One more good winter of commissions and I'll rebuild the north shed proper. I've drawn it twice already.",
           "Fixed my own sill this morning. It was on the list for weeks."],
       h10:["I've stopped giving advice on other people's houses. Too many people live in the advice and forget the house.",
            "When your back gives out on the hoeing I'll teach you the chisel, which is kinder to old bones, though not by much.",
            "My shed is full of offcuts nobody wants. I'll use every one before I admit why.",
-           "Someone on this lane still owes me for a roof. I don't chase it. I remember it.",
+           "Someone on this lane still owes me for a roof. I don't chase it. I wave when we pass.",
            "I built a coop once that a fox walked through like a door. I rebuild it in my head every winter."],
     },
   },
@@ -1423,17 +1438,34 @@ const Game={
     }
     else if(this.isFairActive()&&this.FAIR_LINES[id]) text=this.FAIR_LINES[id];
     else if(this.festivalEvening()&&this.FESTIVAL_LINES[id]) text=this.FESTIVAL_LINES[id];
-    else if(h>=2&&(h>=10?g.day%2===1:g.day%4===3)&&this.HEART_LINES[id]){
+    else if(h>=2&&this.HEART_LINES[id]&&(this.season()===3?(h>=10?g.day%4===1:g.day%8===3):(h>=10?g.day%2===1:g.day%4===3))){
       // Union of every reached tier, the top tier twice (new content shows more), no immediate repeat across days.
       const order=[['h2',2],['h4',4],['h6',6],['h8',8],['h10',10]].filter(([k,n])=>h>=n&&this.HEART_LINES[id][k]);
       const top=order[order.length-1][0];
       let pool=order.flatMap(([k])=>this.HEART_LINES[id][k]).concat(this.HEART_LINES[id][top]);
       // Piet's barn promise is honest in both states: before the build it's a promise, after it the promise kept.
       if(id==='piet'&&g.barn) pool=pool.map(l=>l.startsWith('If you ever raise a barn')?"Your name's in the west beam of that barn. I put it there the day we raised the frame.":l);
-      g.lastHeartLine=g.lastHeartLine||{};
-      let idx=(g.day>>1)%pool.length;
-      if(pool[idx]===g.lastHeartLine[id]&&pool.length>1) idx=(idx+1)%pool.length;
-      text=pool[idx]; g.lastHeartLine[id]=text;
+      // State callbacks: a line joins the pool only when the world actually shows it.
+      if(id==='mara') pool=pool.map(l=>l.startsWith('The stand does better')?(g.coins>=200?l:"The stand holds its own. Some weeks are seed money, some weeks are eating money."):l);
+      if(id==='piet') pool=pool.map(l=>l.startsWith("Work's been thin")?((g.coop||g.barn)?"Work's been steadier since your build. Steady pays for cedar.":l):l);
+      const cb=[];
+      if(g.weather==='rain'&&this.RAIN_HEART_LINES[id]) cb.push(this.RAIN_HEART_LINES[id]);
+      if(id==='bram'&&g.discovered&&g.discovered.duskcarp) cb.push("So you've met the dusk carp. Took me three winters to find mine. Don't ask how long.");
+      if(id==='piet'&&g.coop) cb.push("The coop's holding. Hens don't care about straight walls, but they get them.");
+      if(id==='fern'&&g.meadowLesson) cb.push("The meadow circle is still yours. I draw there most mornings now.");
+      if(id==='mara'&&g.roadChoice==='flowers') cb.push("The road flowers came in thick. People stop more when something's blooming.");
+      // Mara's grief threads back to the notebook she gave away (5-heart event).
+      if(id==='mara'&&h>=8&&g.seenEvents&&g.seenEvents['mara:5']) cb.push("You write in her notebook. I still can't. I'm glad one of us can.");
+      // Per-villager counter: unique reachability holds even as callbacks grow or shrink the pool. A callback the villager has never spoken gets a guaranteed slot the first cadence day it applies; afterwards it rotates in the pool like any line.
+      g.heartPick=g.heartPick||{}; const hp=g.heartPick[id]=g.heartPick[id]||{n:0,last:'',cb:[],day:-1};
+      if(hp.day===g.day&&hp.last){ text=hp.last; } // same cadence day, same line: re-talks never burn the rotation
+      else {
+      const fresh=cb.filter(l=>!hp.cb.includes(l.slice(0,24)));
+      if(fresh.length){ text=fresh[hp.n%fresh.length]; hp.cb.push(text.slice(0,24)); }
+      else { pool=pool.concat(cb); let idx=hp.n%pool.length;
+        if(pool[idx]===hp.last&&pool.length>1) idx=(idx+1)%pool.length;
+        text=pool[idx]; }
+      hp.last=text; hp.n++; hp.day=g.day; }
     }
     else if(this.season()===3&&this.WINTER_LINES[id]) text=this.WINTER_LINES[id][g.day%this.WINTER_LINES[id].length];
     else if(this.season()<3&&this.SEASON_LINES[this.season()][id]){ const pool=def.lines.concat(this.SEASON_LINES[this.season()][id]); text=pool[(g.day-1)%7%pool.length]; }

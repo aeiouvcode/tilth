@@ -1204,24 +1204,24 @@ async function runAutotest(){
           const tiersUpTo=(h)=>['h2','h4','h6','h8','h10'].filter(k=>h>=+k.slice(1));
           const union=(id,h)=>tiersUpTo(h).flatMap(k=>Game.HEART_LINES[id][k]);
           for(const h of [2,4,6,8,10]){
-            Game.hearts=()=>h; const pool=union('bram',h); let prev=null;
+            Game.hearts=()=>h; const pool=union('bram',h); let prev=null; g.heartPick={};
             for(const d of [3,7,11,15,19]){ g.day=d; g.seasonCached=Game.season();
               if(Game.season()===3||Game.isFairActive()||Game.festivalEvening()) continue;
-              g.lastHeartLine={}; Game.talkTo('bram'); const t=document.getElementById('menu').textContent; closeMenu();
+              Game.talkTo('bram'); const t=document.getElementById('menu').textContent; closeMenu();
               if(!pool.some(l=>t.includes(l.slice(0,24)))) throw new Error('h'+h+' bram line outside union pool: '+t.slice(0,40));
               if(prev&&t===prev) throw new Error('heart line repeated on consecutive heart days at h'+h); prev=t; } }
           { // union: at h10 a full rotation surfaces lower tiers too
-            Game.hearts=()=>10; g.lastHeartLine={}; const seen=new Set();
+            Game.hearts=()=>10; g.heartPick={}; const seen=new Set();
             for(let d=1;d<=55;d+=2){ g.day=d; g.seasonCached=Game.season();
               if(Game.season()===3||Game.isFairActive()||Game.festivalEvening()) continue;
               Game.talkTo('bram'); const t=document.getElementById('menu').textContent; closeMenu();
               for(const k of ['h2','h4','h6','h8','h10']) if(Game.HEART_LINES.bram[k].some(l=>t.includes(l.slice(0,24)))) seen.add(k); }
             if(!seen.has('h2')||!seen.has('h10')) throw new Error('h10 union rotation missed tiers: '+[...seen].join(',')); }
           { // no-immediate-repeat guard is load-bearing: seed the previous line with the rotation's exact pick
-            Game.hearts=()=>2; g.day=3; g.seasonCached=Game.season(); g.lastHeartLine={};
+            Game.hearts=()=>2; g.day=3; g.seasonCached=Game.season(); g.heartPick={};
             const poolU=union('bram',2).concat(Game.HEART_LINES.bram.h2);
-            const would=poolU[(3>>1)%poolU.length];
-            g.lastHeartLine={bram:would}; Game.talkTo('bram');
+            const would=poolU[0];
+            g.heartPick={bram:{n:0,last:would,cb:[]}}; Game.talkTo('bram');
             const t=document.getElementById('menu').textContent; closeMenu();
             if(t.includes(would.slice(0,24))) throw new Error('no-repeat guard let the same line fire twice'); }
           Game.hearts=()=>0;
@@ -1236,23 +1236,95 @@ async function runAutotest(){
             if(new Set(p).size!==p.length) throw new Error(id+' '+tier+' has a duplicate line'); }
           { // h10 payoff cadence + heart tiers beat winter on cadence days
             if(!(Game.isFairActive()||Game.festivalEvening())){
-              Game.hearts=()=>10; g.day=5; g.seasonCached=Game.season(); g.lastHeartLine={}; Game.talkTo('bram');
+              Game.hearts=()=>10; g.day=5; g.seasonCached=Game.season(); g.heartPick={}; Game.talkTo('bram');
               let t=document.getElementById('menu').textContent; closeMenu();
               if(!union('bram',10).some(l=>t.includes(l.slice(0,24)))) throw new Error('h10 odd day not from heart union');
-              Game.hearts=()=>8; g.lastHeartLine={}; Game.talkTo('bram'); t=document.getElementById('menu').textContent; closeMenu();
+              Game.hearts=()=>8; g.heartPick={}; Game.talkTo('bram'); t=document.getElementById('menu').textContent; closeMenu();
               if(union('bram',8).some(l=>t.includes(l.slice(0,24)))) throw new Error('h8 fired on a h10-only cadence day'); }
-            Game.hearts=()=>6; g.day=23; g.seasonCached=Game.season(); g.lastHeartLine={}; Game.talkTo('fern');
+            Game.hearts=()=>6; g.day=27; g.seasonCached=Game.season(); g.heartPick={}; Game.talkTo('fern'); // 27%8===3: winter cadence slot
             const t2=document.getElementById('menu').textContent; closeMenu();
             if(!union('fern',6).some(l=>t2.includes(l.slice(0,24)))) throw new Error('winter overrode a heart-tier line'); }
+          { // every unique union line is reachable at every heart band over a year
+            const ocn=g.coins; g.coins=1000; try{
+            for(const id of Object.keys(Game.NPCS)) for(const h of [2,4,6,8,10]){
+              Game.hearts=()=>h; g.heartPick={}; const pool=union(id,h); const heard=new Set();
+              for(let d=1;d<=112;d++){ g.day=d; g.seasonCached=Game.season();
+                Game.talkTo(id); const t=document.getElementById('menu').textContent; closeMenu();
+                for(const l of pool) if(t.includes(l.slice(0,24))) heard.add(l.slice(0,24)); }
+              const missed=pool.filter(l=>!heard.has(l.slice(0,24)));
+              if(missed.length) throw new Error(id+' h'+h+' has '+missed.length+' unreachable line(s): "'+missed[0].slice(0,30)+'..."'); } } finally { g.coins=ocn; } }
+          { // winter keeps a share of cold-season slots: both winter lines and heart lines heard in a winter week
+            Game.hearts=()=>6; g.heartPick={}; let wh=0, hh=0;
+            for(let d=22;d<=28;d++){ g.day=d; g.seasonCached=Game.season(); Game.talkTo('fern');
+              const t=document.getElementById('menu').textContent; closeMenu();
+              if(Game.WINTER_LINES.fern.some(l=>t.includes(l.slice(0,24)))) wh++;
+              if(union('fern',6).some(l=>t.includes(l.slice(0,24)))) hh++; }
+            if(!wh||!hh) throw new Error('winter share broken: winter '+wh+' heart '+hh); }
+          { // grief callback: notebook line only after the 5-heart event, only at 8+
+            const os=g.seenEvents; try{
+              Game.hearts=()=>8; g.seenEvents={}; g.heartPick={}; let heard=false;
+              for(let d=1;d<=112&&!heard;d++){ g.day=d; g.seasonCached=Game.season(); Game.talkTo('mara');
+                if(document.getElementById('menu').textContent.includes('write in her notebook')) heard=true; closeMenu(); }
+              if(heard) throw new Error('notebook callback leaked before the 5-heart event');
+              g.seenEvents={'mara:5':1}; g.heartPick={}; heard=false;
+              for(let d=1;d<=112&&!heard;d++){ g.day=d; g.seasonCached=Game.season(); Game.talkTo('mara');
+                if(document.getElementById('menu').textContent.includes('write in her notebook')) heard=true; closeMenu(); }
+              if(!heard) throw new Error('notebook callback never fires after the 5-heart event');
+            } finally { g.seenEvents=os; } }
+          { // state-gated callbacks: absent without the state, present with it
+            const ow=g.weather, oc=g.coop, od=g.discovered, om=g.meadowLesson, orc=g.roadChoice, ocn=g.coins; try{
+              const hear=(id,h,days)=>{ Game.hearts=()=>h; g.heartPick={}; const out=[];
+                for(let d=1;d<=days;d++){ g.day=d; g.seasonCached=Game.season(); Game.talkTo(id); out.push(document.getElementById('menu').textContent); closeMenu(); } return out.join(' '); };
+              g.weather='sun'; let t=hear('mara',4,60); if(t.includes('Rain days the stand')) throw new Error('rain line heard in sun');
+              g.weather='rain'; t=hear('mara',4,60); if(!t.includes('Rain days the stand')) throw new Error('rain line missing in rain');
+              g.weather='sun'; g.discovered={}; t=hear('bram',4,60); if(t.includes('met the dusk carp')) throw new Error('duskcarp line before discovery');
+              g.discovered={duskcarp:1}; t=hear('bram',4,60); if(!t.includes('met the dusk carp')) throw new Error('duskcarp line missing after discovery');
+              g.discovered={}; g.coop=false; t=hear('piet',4,60); if(t.includes("The coop's holding")) throw new Error('coop line without coop');
+              g.coop=true; t=hear('piet',4,60); if(!t.includes("The coop's holding")) throw new Error('coop line missing with coop');
+              g.coop=false; g.meadowLesson=''; t=hear('fern',4,60); if(t.includes('meadow circle is still yours')) throw new Error('meadow line without lesson');
+              g.meadowLesson='shade'; t=hear('fern',4,60); if(!t.includes('meadow circle is still yours')) throw new Error('meadow line missing after lesson');
+              g.meadowLesson=''; g.roadChoice=''; t=hear('mara',4,60); if(t.includes('road flowers came in')) throw new Error('road line without choice');
+              g.roadChoice='flowers'; t=hear('mara',4,60); if(!t.includes('road flowers came in')) throw new Error('road line missing after flowers');
+              g.roadChoice=''; g.weather='sun';
+              g.coins=100; let t2=hear('mara',4,112); if(!t2.includes('holds its own')) throw new Error('low-coins stand variant missing');
+              if(t2.includes('stand does better')) throw new Error('prosperous stand line leaked into low-coins');
+              g.coins=500; t2=hear('mara',4,112); if(!t2.includes('stand does better')) throw new Error('prosperous stand line missing');
+            } finally { g.weather=ow; g.coop=oc; g.discovered=od; g.meadowLesson=om; g.roadChoice=orc; g.coins=ocn; } }
+          { // a fresh callback takes the very first cadence day it applies to
+            const ow=g.weather; try{
+              g.weather='rain'; Game.hearts=()=>4; g.day=3; g.seasonCached=Game.season(); g.heartPick={};
+              Game.talkTo('mara');
+              if(!document.getElementById('menu').textContent.includes('Rain days the stand')) throw new Error('fresh rain callback skipped its guaranteed slot'); closeMenu();
+            } finally { g.weather=ow; } }
+          { // same cadence day, same line: re-talks reuse the pick and never advance the counter
+            Game.hearts=()=>4; g.day=3; g.seasonCached=Game.season(); g.heartPick={bram:{n:2,last:'',cb:[],day:-1}};
+            Game.talkTo('bram'); const t1=document.getElementById('menu').textContent; closeMenu();
+            const n1=g.heartPick.bram.n;
+            Game.talkTo('bram'); const t2=document.getElementById('menu').textContent; closeMenu();
+            Game.talkTo('bram'); const t3=document.getElementById('menu').textContent; closeMenu();
+            if(t2!==t1||t3!==t1) throw new Error('same-day re-talk showed a different line');
+            if(g.heartPick.bram.n!==n1) throw new Error('same-day re-talk burned the rotation');
+            g.day=7; g.seasonCached=Game.season(); Game.talkTo('bram');
+            if(g.heartPick.bram.n!==n1+1) throw new Error('next cadence day did not advance the rotation'); closeMenu(); }
+          { // Piet thin/steady: gated on real commission state
+            const oc=g.coop, ob=g.barn; try{
+              Game.hearts=()=>4;
+              const hr=()=>{ g.heartPick={}; const out=[];
+                for(let d=1;d<=112;d++){ g.day=d; g.seasonCached=Game.season(); Game.talkTo('piet'); out.push(document.getElementById('menu').textContent); closeMenu(); } return out.join(' '); };
+              g.coop=false; g.barn=false; let t=hr(); if(!t.includes('thin this season')) throw new Error('thin-season line missing without commissions');
+              if(t.includes('steadier since your build')) throw new Error('steady variant fired without a commission');
+              g.coop=true; t=hr(); if(!t.includes('steadier since your build')) throw new Error('steady variant missing after a commission');
+              if(t.includes('thin this season')) throw new Error('thin-season line fired despite a commission');
+            } finally { g.coop=oc; g.barn=ob; } }
           { // Piet barn promise: pre-build promise, post-build kept-promise
-            const kb=g.barn; try{
-              Game.hearts=()=>4; g.day=7; g.seasonCached=Game.season(); g.lastHeartLine={};
-              g.barn=false; Game.talkTo('piet'); // day 7: rotation lands on the promise line (index 3 of the h4 union)
+            const kb=g.barn, kc=g.coop; try{
+              Game.hearts=()=>4; g.day=15; g.seasonCached=Game.season(); g.heartPick={piet:{n:3,last:'',cb:[]}};
+              g.coop=false; g.barn=false; Game.talkTo('piet'); // counter n=3 lands on the promise line (index 3 of the h4 union)
               if(!document.getElementById('menu').textContent.includes('name goes in the beam')) throw new Error('piet pre-barn promise missing');
-              closeMenu(); g.barn=true; Game.talkTo('piet');
+              closeMenu(); g.barn=true; g.heartPick={piet:{n:3,last:'',cb:[]}}; Game.talkTo('piet'); // re-seed: same slot now carries the kept-promise variant
               if(!document.getElementById('menu').textContent.includes('west beam')) throw new Error('piet post-barn line missing');
               closeMenu();
-            } finally { g.barn=kb; } }
+            } finally { g.barn=kb; g.coop=kc; } }
           { // heart-event beats: rows read 'go on' then 'close', never a bare '...'
             const of=g.friendship, os=g.seenEvents, osd=g.seeds; try{
               Game.hearts=oh; Game.nextHeartEvent=on; g.friendship={mara:20}; g.seenEvents={}; g.seeds={};
