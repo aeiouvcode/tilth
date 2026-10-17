@@ -19,18 +19,19 @@ function swish(){ tone(700,0.06,'sawtooth',0.02); }
 function nudge(msg){ toast(msg); tone(180,0.08,'square',0.03); }
 
 // ---------- toast ----------
-const TOASTQ=[];
-function toast(msg){
+const TOASTQ=[]; // entries: {msg, pin} - pinned story lines are never dropped
+function toast(msg, pin){
   const w=document.getElementById('toast-wrap');
-  if([...w.children].some(d=>d.textContent===msg)||TOASTQ.includes(msg)) return; // the same line never stacks
-  if(TOASTQ.length>=6) TOASTQ.shift(); // bounded: the oldest queued line gives way
-  TOASTQ.push(msg); pumpToasts();
+  if([...w.children].some(d=>d.textContent===msg)||TOASTQ.some(q=>q.msg===msg)) return; // the same line never stacks
+  const queued=TOASTQ.filter(q=>!q.pin);
+  if(TOASTQ.length>=6&&queued.length) TOASTQ.splice(TOASTQ.indexOf(queued[0]),1); // bounded: the oldest unpinned line gives way
+  TOASTQ.push({msg, pin:!!pin}); pumpToasts();
 }
 function pumpToasts(){
   if(MENU_OPEN) return; // cards own the screen; queued toasts wait for the close
   const w=document.getElementById('toast-wrap');
   while(w.children.length<2&&TOASTQ.length){ // two at a time, the rest queue in order
-    const d=document.createElement('div'); d.className='toast'; d.textContent=TOASTQ.shift();
+    const d=document.createElement('div'); d.className='toast'; d.textContent=TOASTQ.shift().msg;
     w.appendChild(d);
     setTimeout(()=>{ d.classList.add('out'); setTimeout(()=>{ d.remove(); pumpToasts(); },450); }, 2400);
   }
@@ -705,11 +706,20 @@ async function runAutotest(){
     g.coins=100; g.minutes=DAY_END-1; Game.update(1500, Date.now()); // midnight collapse: flat floor + fee
     if(g.energy!==50) throw new Error('midnight collapse off the floor: '+g.energy);
     if(g.coins!==85) throw new Error('walk-home fee missing at midnight: '+g.coins);
-    g.indoor=false; g.coins=100; g.minutes=1260; g.energy=5; Game.spendEnergy(10); // 21:00 exhaustion fold
-    if(g.energy!==68) throw new Error('collapse energy not scaled by hour: '+g.energy);
-    if(g.coins!==85) throw new Error('walk-home fee missing on exhaustion: '+g.coins);
-    g.indoor=false; g.coins=5; g.energy=5; g.minutes=1260; Game.spendEnergy(10);
+    const w0=document.getElementById('toast-wrap'); w0.innerHTML=''; TOASTQ.length=0;
+    g.coins=5; g.minutes=DAY_END-1; Game.update(1500, Date.now()); // broke collapse: waived, and it says so
     if(g.coins!==5) throw new Error('fee taken from an empty purse: '+g.coins);
+    if(![...w0.children].some(d=>d.textContent.includes('waved off'))&&!TOASTQ.some(q=>q.msg.includes('waved off'))) throw new Error('waived fee stayed silent');
+    w0.innerHTML=''; TOASTQ.length=0;
+    // zero energy is a soft limit, never a day-skip
+    g.indoor=false; g.inCave=false; g.minutes=600; const d0=g.day, x0=g.player.x, hoed0=g.stats.hoed;
+    g.energy=3; Game.spendEnergy(10);
+    if(g.energy!==0) throw new Error('energy drifted: '+g.energy);
+    if(g.day!==d0) throw new Error('exhaustion skipped the day');
+    if(g.indoor||Math.abs(g.player.x-x0)>1) throw new Error('exhaustion moved the player');
+    if(Game.moveSpeed()!==30) throw new Error('no exhausted pace: '+Game.moveSpeed());
+    Game.useTool(); if(g.stats.hoed!==hoed0) throw new Error('tool worked at zero energy');
+    Game.sleep(false); if(Game.moveSpeed()!==60) throw new Error('exhaustion survived a real sleep');
     } finally { g.indoor=false; g.inCave=false; g.minutes=600; g.energy=100; g.coins=120; } // leave the world the way later steps expect it
   },'collapse wake + cost');
   step(()=>{ // toasts: same line never stacks, the rest queue two at a time
@@ -735,6 +745,11 @@ async function runAutotest(){
     if(!document.getElementById('menu').textContent.includes('and 2 more')) throw new Error('overflow rollup missing');
     if(!document.getElementById('menu').textContent.includes('today')) throw new Error('forecast row missing');
     closeMenu();
+    g.crops=new Map([[900,{id:'cloveroot',age:1,stage:1,watered:true}]]);
+    g.produce={cloveroot:1}; Game.openCrateMenu(); document.querySelectorAll('#menu-items .menu-row').forEach(r=>r.dispatchEvent(new MouseEvent('click',{bubbles:true})));
+    Game.sleep();
+    if(!document.getElementById('menu').textContent.includes('1 crop grew')) throw new Error('overnight grow line missing');
+    closeMenu(); g.crops=new Map();
   },'ledger cap + pinned total + forecast');
   step(()=>{ // rainy mornings speak even without a sale
     g=Game.G;
@@ -742,29 +757,44 @@ async function runAutotest(){
     g.day=rd; g.pendingSale=0; g.pendingItems={};
     const w=document.getElementById('toast-wrap'); w.innerHTML=''; TOASTQ.length=0;
     Game.sleep();
-    if(![...w.children].some(d=>d.textContent.includes('rain all morning'))&&!TOASTQ.some(t=>t.includes('rain all morning'))) throw new Error('quiet rainy morning stayed silent');
+    if(![...w.children].some(d=>d.textContent.includes('rain all morning'))&&!TOASTQ.some(t=>t.msg.includes('rain all morning'))) throw new Error('quiet rainy morning stayed silent');
     w.innerHTML=''; TOASTQ.length=0;
   },'rainy morning beat');
   step(()=>{ // rain grade: dawn rain is cool grey-gold, visibly distinct from night (rendered)
     g=Game.G; const oi=g.indoor, om=g.minutes, ow=g.weather; g.indoor=false; g.inCave=false; g.weather='rain';
     const shot=(m)=>{ g.minutes=m; Render.draw(g,1000); const d=Render.ctx.getImageData(0,0,Render.canvas.width,Render.canvas.height).data;
       let s2=0,r=0,b=0; for(let i=0;i<d.length;i+=4){ s2+=d[i]*0.3+d[i+1]*0.6+d[i+2]*0.1; r+=d[i]; b+=d[i+2]; } const n=d.length/4; return [s2/n, r/n-b/n]; };
-    const dwn=shot(360), ngt=shot(1230);
+    const dwn=shot(360), d450=shot(450), dmid=shot(720), ngt=shot(1230);
+    g.weather='sun'; const sun360=shot(360);
     g.weather=ow; g.indoor=oi; g.minutes=om;
     if(dwn[0]-ngt[0]<10) throw new Error('rain dawn indistinct from night (rendered): '+(dwn[0]-ngt[0]).toFixed(1));
     if(dwn[1]-ngt[1]<12) throw new Error('rain dawn lost its grey-gold against night (rendered): '+(dwn[1]-ngt[1]).toFixed(1));
     if(dwn[0]<95) throw new Error('rain dawn went murky (rendered): '+dwn[0].toFixed(1));
-    if(dwn[1]>50) throw new Error('rain dawn too warm - olive murk (rendered): '+dwn[1].toFixed(1)); // 43 blended, 56.8 raw
+    if(sun360[1]-dwn[1]<15) throw new Error('rain dawn reads as warm as sun - olive murk (rendered): '+(sun360[1]-dwn[1]).toFixed(1));
+    if(dwn[1]-d450[1]<3) throw new Error('rain morning arc is flat (rendered): '+(dwn[1]-d450[1]).toFixed(1));
+    if(dmid[0]-ngt[0]<44) throw new Error('rain night not distinct from rain midday (rendered): '+(dmid[0]-ngt[0]).toFixed(1)); // 49.6 arced, 39.9 flat-target
   },'rain dawn grade');
+  step(()=>{ // indoor rain cue: the room cools when it rains (rendered, same-scene differential)
+    g=Game.G; const oi=g.indoor, om=g.minutes, ow=g.weather; g.indoor=true; g.minutes=360;
+    const cool=(w)=>{ g.weather=w; Render.draw(g,1000); const d=Render.ctx.getImageData(0,0,Render.canvas.width,Render.canvas.height).data;
+      let r=0,b=0; for(let i=0;i<d.length;i+=4){ r+=d[i]; b+=d[i+2]; } const n=d.length/4; return b/n-r/n; };
+    const sunC=cool('sun'), rainC=cool('rain');
+    g.weather=ow; g.indoor=oi; g.minutes=om;
+    if(rainC-sunC<4) throw new Error('indoor rain cue invisible (rendered): '+(rainC-sunC).toFixed(1));
+  },'indoor rain cue');
   step(()=>{ // toasts hold while a card owns the screen, then drain on close
     g=Game.G; const w=document.getElementById('toast-wrap'); w.innerHTML=''; TOASTQ.length=0;
     g.produce={cloveroot:1}; Game.openCrateMenu();
     toast('held line');
-    if(w.children.length!==0||!TOASTQ.includes('held line')) throw new Error('toast shown over an open card');
+    if(w.children.length!==0||!TOASTQ.some(q=>q.msg==='held line')) throw new Error('toast shown over an open card');
     closeMenu();
     if(![...w.children].some(d=>d.textContent==='held line')) throw new Error('held toast lost on close');
     for(let i=0;i<9;i++) toast('q'+i);
     if(TOASTQ.length>6) throw new Error('toast queue unbounded: '+TOASTQ.length);
+    w.innerHTML=''; TOASTQ.length=0;
+    for(let i=0;i<10;i++) toast('story '+i, true); // pinned story lines are never dropped, even past the bound
+    const accounted=[...w.children].map(d=>d.textContent).concat(TOASTQ.map(q=>q.msg)).filter(t=>t.startsWith('story'));
+    if(accounted.length!==10) throw new Error('a story toast was dropped: '+accounted.length+'/10');
     w.innerHTML=''; TOASTQ.length=0;
   },'toast hold + bound');
   step(()=>{ // interior wake: the room's light actually changes with the hour (rendered pixels, full-canvas mean luma)

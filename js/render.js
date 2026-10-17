@@ -709,9 +709,13 @@ const Render={
     }
     // lighting overlay (hour tint + season grade)
     let tint=lightTint(G.minutes);
-    if(G.weather==='rain'&&tint){ // rain pulls the hour grade toward a cool grey-gold; dawn rain must not go brown-olive
+    if(G.weather==='rain'&&tint){ // rain keeps its own hour arc: grey-gold dawn, grey midday, blue-grey night
       const c=tint.match(/\d+/g).map(Number);
-      tint=`rgb(${Math.round(lerp(c[0],206,0.5))},${Math.round(lerp(c[1],208,0.5))},${Math.round(lerp(c[2],198,0.5))})`; }
+      const rs=[ [0,[150,158,180]],[300,[150,158,180]],[345,[214,206,182]],[450,[210,210,196]],[720,[206,208,198]],[1110,[200,196,188]],[1230,[170,172,190]],[1440,[150,158,180]] ];
+      let a=rs[0], b=rs[rs.length-1];
+      for(let i=0;i<rs.length-1;i++){ if(G.minutes>=rs[i][0]&&G.minutes<=rs[i+1][0]){ a=rs[i]; b=rs[i+1]; break; } }
+      const t=(G.minutes-a[0])/Math.max(1,(b[0]-a[0]));
+      tint=`rgb(${Math.round(lerp(c[0],lerp(a[1][0],b[1][0],t),0.45))},${Math.round(lerp(c[1],lerp(a[1][1],b[1][1],t),0.45))},${Math.round(lerp(c[2],lerp(a[1][2],b[1][2],t),0.45))})`; }
     const SEASON_GRADE=[null,'#eef0d0','#ecd0a0','#ccdcec'];
     const sg=SEASON_GRADE[G.seasonCached||0];
     if(tint||sg){
@@ -926,6 +930,9 @@ const Render={
     ctx.globalCompositeOperation='multiply';
     ctx.fillStyle=interiorTint(G.minutes); ctx.fillRect(0,0,cw,ch);
     ctx.globalCompositeOperation='source-over';
+    if(G.weather==='rain'){ // rain reaches the room: a cool wash over the lamplight
+      ctx.fillStyle='rgba(170,190,208,0.10)'; ctx.fillRect(0,0,cw,ch);
+    }
     // morning reaches through the window: a warm shaft across the floor, peaking 6:00-9:00
     const sa=G.minutes<330||G.minutes>=600?0: G.minutes<360?(G.minutes-330)/30 : G.minutes<540?1 : (600-G.minutes)/60;
     if(sa>0){
