@@ -683,6 +683,13 @@ async function runAutotest(){
     Game.sleep(); // a quiet morning: nothing shipped, no ledger
     if(!document.getElementById('menu').classList.contains('hidden')) throw new Error('empty crate still opened the ledger');
   },'crate DOM sell flow');
+  step(()=>{ // morning grade: rose dawn lifts to golden morning, noon passes through
+    const rgb=m=>(lightTint(m)||'rgb(255,255,255)').match(/\d+/g).map(Number);
+    if(lightTint(720)!==null) throw new Error('noon tint should pass through');
+    const dawn=rgb(345), mid=rgb(450);
+    if(dawn[0]-dawn[2]<70) throw new Error('dawn lost its rose: r-b='+(dawn[0]-dawn[2]));
+    if(dawn[0]*0.3+dawn[1]*0.6+dawn[2]*0.1 >= mid[0]*0.3+mid[1]*0.6+mid[2]*0.1) throw new Error('dawn no longer lifts toward morning');
+  },'morning grade arc');
   step(()=>{ // v2.16: skills xp, level thresholds, sell-price perk, discovery, journal UI
     g=Game.G;
     if(Game.skillLevel('farm')!==1) throw new Error('farm level after 5 harvests: '+Game.skillLevel('farm')); // 5 harvests x 2xp = 10

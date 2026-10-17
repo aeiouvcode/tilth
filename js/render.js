@@ -1092,7 +1092,7 @@ function facingTile(p){
 }
 function lightTint(min){
   // timeline of tint colors by hour
-  const stops=[ [0,'#7d7dae'],[300,'#7d7dae'],[330,'#e8d0b8'],[420,'#ffefd4'],[720,'#ffffff'],[1020,'#ffeed6'],[1110,'#f0b890'],[1170,'#d89a80'],[1230,'#9890b8'],[1440,'#7d7dae'] ];
+  const stops=[ [0,'#7d7dae'],[300,'#8d85b0'],[345,'#e0a984'],[450,'#ffe8c4'],[720,'#ffffff'],[1020,'#ffeed6'],[1110,'#f0b890'],[1170,'#d89a80'],[1230,'#9890b8'],[1440,'#7d7dae'] ];
   let a=stops[0], b=stops[stops.length-1];
   for(let i=0;i<stops.length-1;i++){ if(min>=stops[i][0]&&min<=stops[i+1][0]){ a=stops[i]; b=stops[i+1]; break; } }
   const t=(min-a[0])/Math.max(1,(b[0]-a[0]));
