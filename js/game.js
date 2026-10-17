@@ -1023,7 +1023,7 @@ const Game={
     fern:"I buried a seed under the snow this morning. Don't ask what kind. Let it surprise us.",
     piet:"Cedar burns slow. Good way to see the old year out without rushing the new one.",
   },
-  // v2.48-local: spring/summer/autumn pools - 4 season lines + the 3 base lines = one distinct line per weekday
+  // v2.48: spring/summer/autumn pools - 4 season lines + the 3 base lines = one distinct line per weekday
   SEASON_LINES:[
     { // spring
       mara:["The thaw gets into everything. Mud on the ledger, mud in the tea. I've stopped minding.",
