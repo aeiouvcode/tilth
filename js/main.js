@@ -141,7 +141,7 @@ function openDialogue(name, text, extraRows, portraitId){
   const wrap=document.getElementById('menu-items'); wrap.innerHTML='';
   const p=document.createElement('div');
   if(name==='the village table')p.className='table-passage';
-  else p.style.cssText='padding:8px 4px;font-size:14px;color:#4a3f2e;line-height:1.5;font-style:italic;';
+  else p.style.cssText='padding:8px 4px;font-size:16px;color:#4a3f2e;line-height:1.5;font-style:italic;';
   p.textContent='\u201C'+text+'\u201D';
   if(name==='the village table'){
     const voices=document.createElement('div');voices.className='table-voice';
@@ -163,7 +163,7 @@ function openDialogue(name, text, extraRows, portraitId){
     wrap.appendChild(d);
   }
   const ok=document.createElement('div'); ok.className='menu-row';
-  ok.innerHTML='<div class="nm">... </div>';
+  ok.innerHTML='<div class="nm">close</div>';
   ok.addEventListener('click',closeMenu);
   wrap.appendChild(ok);
   m.classList.remove('hidden');
@@ -1201,7 +1201,7 @@ async function runAutotest(){
         } finally { Game.hearts=oh; Game.nextHeartEvent=on; g.day=sv; g.seasonCached=Game.season(); } }
       { // heart-tier ambient pools: locked at 0 hearts, resolve to highest reached tier, rotate within pool
         const oh=Game.hearts, on=Game.nextHeartEvent; Game.nextHeartEvent=()=>null; const sv=g.day; try{
-          for(const [h,tier] of [[2,'h2'],[4,'h4'],[6,'h6'],[8,'h8'],[10,'h8']]){
+          for(const [h,tier] of [[2,'h2'],[4,'h4'],[6,'h6'],[8,'h8'],[10,'h10']]){
             Game.hearts=()=>h; const pool=Game.HEART_LINES.bram[tier];
             for(const d of [3,7,11,15]){ g.day=d; g.seasonCached=Game.season();
               if(Game.season()===3||Game.isFairActive()||Game.festivalEvening()) continue;
@@ -1211,12 +1211,21 @@ async function runAutotest(){
           for(const d of [3,7,11,15]){ g.day=d; g.seasonCached=Game.season();
             if(Game.season()===3||Game.isFairActive()||Game.festivalEvening()) continue;
             Game.talkTo('bram'); const t=document.getElementById('menu').textContent; closeMenu();
-            for(const tier of ['h2','h4','h6','h8']) for(const l of Game.HEART_LINES.bram[tier])
+            for(const tier of ['h2','h4','h6','h8','h10']) for(const l of Game.HEART_LINES.bram[tier])
               if(t.includes(l.slice(0,24))) throw new Error('heart line leaked at 0 hearts: '+l.slice(0,30)); }
-          for(const id of Object.keys(Game.NPCS)) for(const tier of ['h2','h4','h6','h8']){
+          for(const id of Object.keys(Game.NPCS)) for(const tier of ['h2','h4','h6','h8','h10']){
             const p=Game.HEART_LINES[id][tier];
-            if(!p||p.length<(tier==='h4'?3:2)) throw new Error(id+' '+tier+' pool too small');
+            if(!p||p.length<(tier==='h10'?2:3)) throw new Error(id+' '+tier+' pool too small');
             if(new Set(p).size!==p.length) throw new Error(id+' '+tier+' has a duplicate line'); }
+          { // Piet barn promise: pre-build promise, post-build kept-promise
+            const kb=g.barn; try{
+              Game.hearts=()=>4; g.day=3; g.seasonCached=Game.season();
+              g.barn=false; Game.talkTo('piet');
+              if(!document.getElementById('menu').textContent.includes('name goes in the beam')) throw new Error('piet pre-barn promise missing');
+              closeMenu(); g.barn=true; Game.talkTo('piet');
+              if(!document.getElementById('menu').textContent.includes('west beam')) throw new Error('piet post-barn line missing');
+              closeMenu();
+            } finally { g.barn=kb; } }
         } finally { Game.hearts=oh; Game.nextHeartEvent=on; g.day=sv; g.seasonCached=Game.season(); } }
       closeMenu();
       // journal counts the winter set
