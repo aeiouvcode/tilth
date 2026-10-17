@@ -12,7 +12,7 @@ const Game={
       tool:0, // index into TOOLS
       seeds:{cloveroot:5, sunbean:2},
       produce:{},
-      shipped:0, pendingSale:0, lifetimeEarned:0, harvested:0,
+      shipped:0, pendingSale:0, pendingItems:{}, lifetimeEarned:0, harvested:0,
       clouds:[], butterflies:[], fireflies:[],
       cat:{x:9.5*TILE, y:22.5*TILE, tx:9.5*TILE, ty:22.5*TILE, flip:false},
       mara:{x:15.5*TILE, y:10.8*TILE, tx:15.5*TILE, ty:10.8*TILE, flip:false, pause:0},
@@ -570,6 +570,7 @@ const Game={
       pick:()=>{
         const val=this.sellPrice(id)*n;
         g.pendingSale+=val; g.produce[id]=0; g.shipped+=n;
+        g.pendingItems[id]={n:(g.pendingItems[id]?g.pendingItems[id].n:0)+n, val:(g.pendingItems[id]?g.pendingItems[id].val:0)+val};
         toast(`${n} ${ITEMS[id].name} in the crate (+${val}g at dawn)`); chime(740);
         closeMenu();
       }
@@ -710,6 +711,14 @@ const Game={
   },
   refreshMenu(){ closeMenu(); this.openShop(); },
 
+  showDawnLedger(items, total){
+    const g=this.G;
+    const rows=items.map(([id,v])=>({ label:ITEMS[id].name, desc:'shipped x'+v.n, price:v.val+'g',
+      icon:SPR.item[id]||SPR.forage[id]||(CROPS[id]?SPR.crop(CROPS[id],3):null), pick:()=>{} }));
+    rows.push({label:'paid at dawn', desc:'the crate by your door', price:'+'+total+'g', pick:()=>{}});
+    rows.push({label:'close', desc:'', price:'', pick:()=>closeMenu()});
+    openMenu(`day ${g.day} — the crate went out at dawn`, rows);
+  },
   sleep(){
     const g=this.G;
     // tonight's weather decides whether the fields water themselves
@@ -728,7 +737,9 @@ const Game={
       for(let i=0;i<g.grid.length;i++){ if(g.grid[i]===T.SOILWET) g.grid[i]=T.SOIL; }
     }
     // sell
-    if(g.pendingSale>0){ g.coins+=g.pendingSale; g.lifetimeEarned+=g.pendingSale; toast(`dawn sale: +${g.pendingSale}g`); g.pendingSale=0; }
+    const soldTotal=g.pendingSale, soldItems=Object.entries(g.pendingItems||{}).filter(([id,v])=>v&&v.n>0);
+    if(soldTotal>0){ g.coins+=soldTotal; g.lifetimeEarned+=soldTotal; g.pendingSale=0; }
+    g.pendingItems={};
     g.day++; g.minutes=DAY_START; g.energy=100; g.giftsToday={};
     if(g.fieldSeasonPending>=0){ if(this.seasonOf(g.day-1)===g.fieldSeasonPending&&!g.fieldSeasons.includes(g.fieldSeasonPending))g.fieldSeasons.push(g.fieldSeasonPending);g.fieldSeasonPending=-1; }
     g.forage.clear(); this.spawnForage(2+Math.floor(Math.random()*3));
@@ -752,6 +763,7 @@ const Game={
     for(let l=1;l<=3;l++) this.spawnNodes(l); // the cave shifts overnight
     this.save();
     fadeSleep();
+    if(soldTotal>0) this.showDawnLedger(soldItems, soldTotal);
   },
 
   NPCS:{

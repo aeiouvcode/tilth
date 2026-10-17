@@ -672,6 +672,16 @@ async function runAutotest(){
     if(g.pendingSale!==sp*2) throw new Error('crate pick: '+g.pendingSale+' vs '+sp*2);
     Game.sleep();
     if(g.coins!==c0+sp*2) throw new Error('dawn sale after crate: '+g.coins);
+    // dawn ledger: the loop's accounting heartbeat replaces the bare toast
+    const lm=document.getElementById('menu');
+    if(lm.classList.contains('hidden')) throw new Error('dawn ledger did not open after a sale');
+    const lt=lm.textContent;
+    if(!lt.includes('the crate went out at dawn')) throw new Error('dawn ledger title missing');
+    if(!lt.includes('Cloveroot')||!lt.includes('shipped x2')) throw new Error('dawn ledger dropped the item line');
+    if(!lt.includes('+'+(sp*2)+'g')) throw new Error('dawn ledger total line missing');
+    closeMenu();
+    Game.sleep(); // a quiet morning: nothing shipped, no ledger
+    if(!document.getElementById('menu').classList.contains('hidden')) throw new Error('empty crate still opened the ledger');
   },'crate DOM sell flow');
   step(()=>{ // v2.16: skills xp, level thresholds, sell-price perk, discovery, journal UI
     g=Game.G;
