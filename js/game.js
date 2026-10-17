@@ -734,6 +734,7 @@ const Game={
   },
   sleep(collapsed){
     const g=this.G;
+    TOASTQ.length=0; const tw=document.getElementById('toast-wrap'); if(tw) tw.innerHTML=''; // no stale lines ride into the new day
     // tonight's weather decides whether the fields water themselves
     const nextWeather=this.weatherForDay(g.day+1);
     if(nextWeather==='rain'){

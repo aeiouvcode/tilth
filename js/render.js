@@ -930,8 +930,10 @@ const Render={
     ctx.globalCompositeOperation='multiply';
     ctx.fillStyle=interiorTint(G.minutes); ctx.fillRect(0,0,cw,ch);
     ctx.globalCompositeOperation='source-over';
-    if(G.weather==='rain'){ // rain reaches the room: a cool wash over the lamplight
-      ctx.fillStyle='rgba(170,190,208,0.10)'; ctx.fillRect(0,0,cw,ch);
+    if(G.weather==='rain'){ // rain reaches the room: cooler AND dimmer than a sunlit room
+      ctx.globalCompositeOperation='multiply';
+      ctx.fillStyle='rgb(196,208,234)'; ctx.fillRect(0,0,cw,ch);
+      ctx.globalCompositeOperation='source-over';
     }
     // morning reaches through the window: a warm shaft across the floor, peaking 6:00-9:00
     const sa=G.minutes<330||G.minutes>=600?0: G.minutes<360?(G.minutes-330)/30 : G.minutes<540?1 : (600-G.minutes)/60;

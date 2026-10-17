@@ -751,6 +751,17 @@ async function runAutotest(){
     if(!document.getElementById('menu').textContent.includes('1 crop grew')) throw new Error('overnight grow line missing');
     closeMenu(); g.crops=new Map();
   },'ledger cap + pinned total + forecast');
+  step(()=>{ // stale evening lines must not ride into the new day
+    g=Game.G; const oc=g.crops, om=g.minutes; try{
+      g.crops=new Map(); g.minutes=600; g.pendingSale=0; g.pendingItems={};
+      const w=document.getElementById('toast-wrap'); w.innerHTML=''; TOASTQ.length=0;
+      toast('reeled in early'); toast('you feel the day in your bones', true);
+      if(w.children.length===0&&TOASTQ.length===0) throw new Error('toast setup failed');
+      Game.sleep();
+      const txt=[...w.children].map(d=>d.textContent).join('|')+'|'+TOASTQ.map(q=>q.msg).join('|');
+      if(txt.includes('reeled in early')||txt.includes('bones')) throw new Error('stale toast survived sleep: '+txt);
+      w.innerHTML=''; TOASTQ.length=0;
+    } finally { g.crops=oc; g.minutes=om; } },'sleep clears stale toasts');
   step(()=>{ // quiet sunny morning with growth gets its small line
     g=Game.G; const oc=g.crops, om=g.minutes; try{
       let sd=g.day; while(Game.weatherForDay(sd+1)==='rain') sd++;
@@ -787,10 +798,11 @@ async function runAutotest(){
   step(()=>{ // indoor rain cue: the room cools when it rains (rendered, same-scene differential)
     g=Game.G; const oi=g.indoor, om=g.minutes, ow=g.weather; g.indoor=true; g.minutes=360;
     const cool=(w)=>{ g.weather=w; Render.draw(g,1000); const d=Render.ctx.getImageData(0,0,Render.canvas.width,Render.canvas.height).data;
-      let r=0,b=0; for(let i=0;i<d.length;i+=4){ r+=d[i]; b+=d[i+2]; } const n=d.length/4; return b/n-r/n; };
+      let r=0,gc=0,b=0; for(let i=0;i<d.length;i+=4){ r+=d[i]; gc+=d[i+1]; b+=d[i+2]; } const n=d.length/4; return {cool:b/n-r/n, luma:(r+gc+b)/n}; };
     const sunC=cool('sun'), rainC=cool('rain');
     g.weather=ow; g.indoor=oi; g.minutes=om;
-    if(rainC-sunC<4) throw new Error('indoor rain cue invisible (rendered): '+(rainC-sunC).toFixed(1));
+    if(rainC.cool-sunC.cool<4) throw new Error('indoor rain cue invisible (rendered): '+(rainC.cool-sunC.cool).toFixed(1));
+    if(rainC.luma>sunC.luma-4) throw new Error('indoor rain not dimmer than sun: sun '+sunC.luma.toFixed(1)+' vs rain '+rainC.luma.toFixed(1));
   },'indoor rain cue');
   step(()=>{ // zero energy outdoors: home, crate, mailbox, stand, NPCs and the reel still answer; only labor refuses
     g=Game.G; const oTool=g.tool, oLetters=g.letters, oFish=g.fishing, oE=g.energy, oEx=g.exhausted, oIn=g.indoor, oM=g.minutes, oP={x:g.player.x,y:g.player.y,dir:g.player.dir}, oH=Game.hearts; try{
