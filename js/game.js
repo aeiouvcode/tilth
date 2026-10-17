@@ -988,7 +988,6 @@ const Game={
     return Math.hypot(g.player.x-n.x,g.player.y-n.y)<TILE*1.7;
   },
   LOVED:{ mara:'sunbean', bram:'duskcarp', fern:'morel', piet:'embermelon' },
-  // Heart-tier ambient pools: on day%4===3 a villager speaks from the highest tier reached (2/4/6/8 hearts), rotating by day. Original writing, in-voice; the legacy 4-heart lines live on inside the h4 pools.
   // Heart-tier ambient pools: on day%4===3 a villager speaks from the highest tier reached (2/4/6/8/10 hearts), rotating by day. Original writing, in-voice; the legacy 4-heart lines live on inside the h4 pools. Voices kept apart: Mara = coin, customers, dry asides; Bram = tall tales admitted, grump, aches; Fern = scattered, crow rivalry, drawing failures; Piet = blunt craft talk, anti-sentiment.
   HEART_LINES:{
     mara:{
@@ -1003,29 +1002,31 @@ const Game={
           "The quiet weeks don't worry me anymore. You'll be out there at dawn either way."],
       h8:["My mother would have argued with you about spacing. She argued with everyone about spacing. I think she'd have lost.",
           "Piet says I charge too little for seed. I say he charges too much for nails. We're both right.",
-          "I almost sold you old stock your first week. You checked the packet dates yourself. I never forgot that."],
-      h10:["I saved you the first crate of cloveroot this spring before I remembered you grow your own now. Force of habit.",
-           "Run the stand for one day and I'll sit in your field doing nothing. We'll both learn something."],
+          "I almost sold a crate of old stock my first spring running the stand. My mother caught it. I check the dates to this day."],
+      h10:["I saved you the first crate of cloveroot this spring before I remembered you grow your own now.",
+           "Someday I'm taking a whole day off in the high grass and nobody gets to know where. Not even you.",
+           "The stand's best hour is just before closing, when the light goes low and the jars glow. I stay for it most days."],
     },
     bram:{
       h2:["You hold the rod steadier than most who come by. The pond appreciates a still hand.",
           "Come by the water more often and I'll start telling you the real spots. Some of them are even true.",
-          "Don't believe every spot I point you to. A man gets bored sitting still; he invents fish."],
+          "Don't wave at me from the far bank. If I want company, I'll be at the near one."],
       h4:["You're good company, farmer. The pond says so, and the pond doesn't lie.",
-          "You've sat with me long enough that the herons take you for a fixture. High honor, that.",
-          "You fish the dusk now instead of asking when. That's the whole lesson, and I charge extra for it."],
+          "You've sat with me long enough that the herons no longer bother lifting off when you arrive.",
+          "Everyone asks me when the dusk carp show. If I told them straight, they'd have nothing to learn patience on."],
       h6:["I've taught three people to fish in forty years. You're the only one who learned to be quiet first.",
           "When I'm gone the pond keeps my spot warm for about a day. Then it's yours, I expect.",
           "My knee says rain before the clouds do. It's wrong half the time, but I've stopped arguing with it."],
       h8:["I don't say this to many: the fishing's better with you here, even when we catch nothing.",
-          "I've started saving the calm side of the pond for you. The herons object. They can learn.",
+          "The calm side of the pond is yours when you want it. I've stopped fishing that side myself.",
           "You reel too fast. There, I've said it. Now watch a man who doesn't."],
       h10:["Forty years I fished alone and called it preference. You sitting there proved it was habit.",
-           "If you ever stop coming, I'll tell the herons you moved away. They'll know I'm lying."],
+           "There's a deep spot past the reeds I keep to myself. You can fish anywhere else.",
+           "You can have my spare rod when my hands give out. Not before, so stop asking with your eyes."],
     },
     fern:{
       h2:["You're getting quieter feet in the meadow. The morels won't know what hit them.",
-          "Tried to draw your scarecrow in the rain. The ink ran. Now it's a scarecrow with long legs.",
+          "Tried to draw in the rain yesterday. The ink ran before I got a single line down.",
           "The crows found my morel spot. All of it. I walked home very fast and I'm not discussing it."],
       h4:["I saved you the biggest morel spot. Don't tell the crows.",
           "I drew your scarecrow from memory. It came out kinder than the real one.",
@@ -1033,27 +1034,29 @@ const Game={
       h6:["My book has a whole page of your farm now. The pond, the stand, your leaning fence. It's my favorite chapter.",
           "I used to draw alone. It's better with someone to describe the light to.",
           "Mara says my drawings make her stand look crooked. I draw what's there."],
-      h8:["I loaned my book to Bram once. He used it to prop up a fishing crate. We are past it. Mostly.",
+      h8:["I loaned Bram my book once and he used it to prop up a fishing crate, and when I objected he said the book seemed happy to be useful.",
           "You're the only person I'd trust with my morel map. It's in my head, so you'll have to keep walking with me.",
           "I sketched your fence from the hill. Piet looked at it and said 'west lean.' He talks about your fence more than you do."],
-      h10:["I drew your farm from the hill yesterday and forgot to eat lunch. That's the highest compliment I own.",
-           "When the book is full I'm starting a second one. The first chapter is your farm, so you'd better stay interesting."],
+      h10:["I forgot lunch yesterday because the light on the pond went gold. It happens more than I admit.",
+           "When the book is full I'm starting a second one. The first chapter is your farm, so you'd better stay interesting.",
+           "I traded Mara a basket of plums for her empty seed jars. The jars are for buttons and beetle shells."],
     },
     piet:{
-      h2:["You're slow with a hammer. That's not an insult. Fast is how thumbs get flattened.",
+      h2:["Slow with a hammer is fine. Fast is how thumbs get flattened. I keep bandages in the workshop drawer.",
           "Rain held up my mortar work all week. Mortar keeps its own schedule and it's never yours.",
-          "Mara's stand leaks at the north corner. I'll fix it when the rain stops. She'll tell you I've said that since spring. She's right."],
+          "Mara's stand roof is third on my list and she knows it. She brings me plums anyway. Smart woman."],
       h4:["When that barn goes up, your name goes in the beam. That's how we do it.",
           "Your gate post wants another nail. Not today. Everything wants another nail.",
           "I keep a cedar plank aside for you. Good grain, no knots. For when you need it."],
-      h6:["Forty years of roofs and I'll tell you straight: I'd build beside you any day of the week.",
-          "I ruined a beam yesterday measuring in my head. Forty years and I still try it. Write it down.",
-          "People think I like quiet. I like the sound of a good joint going home. Different thing."],
+      h6:["I'd hand you a chisel without watching over your shoulder. I don't do that.",
+          "I ruined a good board yesterday measuring in my head. Forty years and I still try it. Write it down.",
+          "People think I work in silence because I like quiet. I just like hearing a joint go home."],
       h8:["Someday I'll teach you the dovetail joint I won't show anyone else. Someday soon, maybe.",
-          "You're the only one who asks why a joint holds. Most people just want to know the price.",
+          "People ask what a joint costs. Almost nobody asks why it holds. The why is the interesting part.",
           "I argued with your fence today. It's winning, but I have time."],
-      h10:["Forty years of roofs, and I'd still rather show you a joint than take a compliment. Sit down.",
-           "When your back gives out on the hoeing, I'll teach you the chisel. It's kinder. Barely."],
+      h10:["I've stopped giving advice on other people's houses. Too many people live in the advice and forget the house.",
+           "When your back gives out on the hoeing I'll teach you the chisel, which is kinder to old bones, though not by much.",
+           "I keep the offcuts nobody wants. Cedar mostly. A man never knows."],
     },
   },
   hearts(id){ return Math.floor((this.G.friendship[id]||0)/2); },
@@ -1346,7 +1349,7 @@ const Game={
     let i=0;
     const show=()=>{
       const last=(i===ev.beats.length-1);
-      openDialogue(`${def.name} \u2665${this.hearts(id)}`, ev.beats[i], [{label:last?'...':'go on', desc:'', price:'', icon:null, pick:()=>{
+      openDialogue(`${def.name} \u2665${this.hearts(id)}`, ev.beats[i], [{label:last?'close':'go on', desc:'', price:'', icon:null, pick:()=>{
         i++;
         if(i<ev.beats.length) show();
         else { g.seenEvents[id+':'+ev.hearts]=true; closeMenu(); this.applyHeartFx(ev.fx); }

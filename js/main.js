@@ -1215,7 +1215,7 @@ async function runAutotest(){
               if(t.includes(l.slice(0,24))) throw new Error('heart line leaked at 0 hearts: '+l.slice(0,30)); }
           for(const id of Object.keys(Game.NPCS)) for(const tier of ['h2','h4','h6','h8','h10']){
             const p=Game.HEART_LINES[id][tier];
-            if(!p||p.length<(tier==='h10'?2:3)) throw new Error(id+' '+tier+' pool too small');
+            if(!p||p.length<3) throw new Error(id+' '+tier+' pool too small');
             if(new Set(p).size!==p.length) throw new Error(id+' '+tier+' has a duplicate line'); }
           { // Piet barn promise: pre-build promise, post-build kept-promise
             const kb=g.barn; try{
@@ -1226,6 +1226,18 @@ async function runAutotest(){
               if(!document.getElementById('menu').textContent.includes('west beam')) throw new Error('piet post-barn line missing');
               closeMenu();
             } finally { g.barn=kb; } }
+          { // heart-event beats: rows read 'go on' then 'close', never a bare '...'
+            const of=g.friendship, os=g.seenEvents, osd=g.seeds; try{
+              Game.hearts=oh; Game.nextHeartEvent=on; g.friendship={mara:20}; g.seenEvents={}; g.seeds={};
+              Game.talkTo('mara'); let sawClose=false;
+              for(let guard=0;guard<8;guard++){
+                const nms=[...document.querySelectorAll('#menu .menu-row .nm')].map(e=>e.textContent.trim());
+                if(nms.includes('...')) throw new Error('bare ... row in heart event');
+                const go=[...document.querySelectorAll('#menu .menu-row')].find(r=>r.querySelector('.nm').textContent.trim()==='go on');
+                if(!go){ sawClose=nms.includes('close'); break; } go.click(); }
+              if(!sawClose) throw new Error('heart event never reached close row');
+              closeMenu();
+            } finally { g.friendship=of; g.seenEvents=os; g.seeds=osd; } }
         } finally { Game.hearts=oh; Game.nextHeartEvent=on; g.day=sv; g.seasonCached=Game.season(); } }
       closeMenu();
       // journal counts the winter set
