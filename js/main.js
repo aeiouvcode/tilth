@@ -1201,12 +1201,29 @@ async function runAutotest(){
         } finally { Game.hearts=oh; Game.nextHeartEvent=on; g.day=sv; g.seasonCached=Game.season(); } }
       { // heart-tier ambient pools: locked at 0 hearts, resolve to highest reached tier, rotate within pool
         const oh=Game.hearts, on=Game.nextHeartEvent; Game.nextHeartEvent=()=>null; const sv=g.day; try{
-          for(const [h,tier] of [[2,'h2'],[4,'h4'],[6,'h6'],[8,'h8'],[10,'h10']]){
-            Game.hearts=()=>h; const pool=Game.HEART_LINES.bram[tier];
-            for(const d of [3,7,11,15]){ g.day=d; g.seasonCached=Game.season();
+          const tiersUpTo=(h)=>['h2','h4','h6','h8','h10'].filter(k=>h>=+k.slice(1));
+          const union=(id,h)=>tiersUpTo(h).flatMap(k=>Game.HEART_LINES[id][k]);
+          for(const h of [2,4,6,8,10]){
+            Game.hearts=()=>h; const pool=union('bram',h); let prev=null;
+            for(const d of [3,7,11,15,19]){ g.day=d; g.seasonCached=Game.season();
+              if(Game.season()===3||Game.isFairActive()||Game.festivalEvening()) continue;
+              g.lastHeartLine={}; Game.talkTo('bram'); const t=document.getElementById('menu').textContent; closeMenu();
+              if(!pool.some(l=>t.includes(l.slice(0,24)))) throw new Error('h'+h+' bram line outside union pool: '+t.slice(0,40));
+              if(prev&&t===prev) throw new Error('heart line repeated on consecutive heart days at h'+h); prev=t; } }
+          { // union: at h10 a full rotation surfaces lower tiers too
+            Game.hearts=()=>10; g.lastHeartLine={}; const seen=new Set();
+            for(let d=1;d<=55;d+=2){ g.day=d; g.seasonCached=Game.season();
               if(Game.season()===3||Game.isFairActive()||Game.festivalEvening()) continue;
               Game.talkTo('bram'); const t=document.getElementById('menu').textContent; closeMenu();
-              if(!pool.some(l=>t.includes(l.slice(0,24)))) throw new Error('h'+h+' bram heart line not from '+tier+': '+t.slice(0,40)); } }
+              for(const k of ['h2','h4','h6','h8','h10']) if(Game.HEART_LINES.bram[k].some(l=>t.includes(l.slice(0,24)))) seen.add(k); }
+            if(!seen.has('h2')||!seen.has('h10')) throw new Error('h10 union rotation missed tiers: '+[...seen].join(',')); }
+          { // no-immediate-repeat guard is load-bearing: seed the previous line with the rotation's exact pick
+            Game.hearts=()=>2; g.day=3; g.seasonCached=Game.season(); g.lastHeartLine={};
+            const poolU=union('bram',2).concat(Game.HEART_LINES.bram.h2);
+            const would=poolU[(3>>1)%poolU.length];
+            g.lastHeartLine={bram:would}; Game.talkTo('bram');
+            const t=document.getElementById('menu').textContent; closeMenu();
+            if(t.includes(would.slice(0,24))) throw new Error('no-repeat guard let the same line fire twice'); }
           Game.hearts=()=>0;
           for(const d of [3,7,11,15]){ g.day=d; g.seasonCached=Game.season();
             if(Game.season()===3||Game.isFairActive()||Game.festivalEvening()) continue;
@@ -1215,22 +1232,22 @@ async function runAutotest(){
               if(t.includes(l.slice(0,24))) throw new Error('heart line leaked at 0 hearts: '+l.slice(0,30)); }
           for(const id of Object.keys(Game.NPCS)) for(const tier of ['h2','h4','h6','h8','h10']){
             const p=Game.HEART_LINES[id][tier];
-            if(!p||p.length<3) throw new Error(id+' '+tier+' pool too small');
+            if(!p||p.length<(tier==='h10'?5:3)) throw new Error(id+' '+tier+' pool too small');
             if(new Set(p).size!==p.length) throw new Error(id+' '+tier+' has a duplicate line'); }
           { // h10 payoff cadence + heart tiers beat winter on cadence days
             if(!(Game.isFairActive()||Game.festivalEvening())){
-              Game.hearts=()=>10; g.day=5; g.seasonCached=Game.season(); Game.talkTo('bram');
+              Game.hearts=()=>10; g.day=5; g.seasonCached=Game.season(); g.lastHeartLine={}; Game.talkTo('bram');
               let t=document.getElementById('menu').textContent; closeMenu();
-              if(!Game.HEART_LINES.bram.h10.some(l=>t.includes(l.slice(0,24)))) throw new Error('h10 odd day not from h10 pool');
-              Game.hearts=()=>8; Game.talkTo('bram'); t=document.getElementById('menu').textContent; closeMenu();
-              if(Game.HEART_LINES.bram.h8.some(l=>t.includes(l.slice(0,24)))) throw new Error('h8 fired on a h10-only cadence day'); }
-            Game.hearts=()=>6; g.day=23; g.seasonCached=Game.season(); Game.talkTo('fern');
+              if(!union('bram',10).some(l=>t.includes(l.slice(0,24)))) throw new Error('h10 odd day not from heart union');
+              Game.hearts=()=>8; g.lastHeartLine={}; Game.talkTo('bram'); t=document.getElementById('menu').textContent; closeMenu();
+              if(union('bram',8).some(l=>t.includes(l.slice(0,24)))) throw new Error('h8 fired on a h10-only cadence day'); }
+            Game.hearts=()=>6; g.day=23; g.seasonCached=Game.season(); g.lastHeartLine={}; Game.talkTo('fern');
             const t2=document.getElementById('menu').textContent; closeMenu();
-            if(!Game.HEART_LINES.fern.h6.some(l=>t2.includes(l.slice(0,24)))) throw new Error('winter overrode a heart-tier line'); }
+            if(!union('fern',6).some(l=>t2.includes(l.slice(0,24)))) throw new Error('winter overrode a heart-tier line'); }
           { // Piet barn promise: pre-build promise, post-build kept-promise
             const kb=g.barn; try{
-              Game.hearts=()=>4; g.day=3; g.seasonCached=Game.season();
-              g.barn=false; Game.talkTo('piet');
+              Game.hearts=()=>4; g.day=7; g.seasonCached=Game.season(); g.lastHeartLine={};
+              g.barn=false; Game.talkTo('piet'); // day 7: rotation lands on the promise line (index 3 of the h4 union)
               if(!document.getElementById('menu').textContent.includes('name goes in the beam')) throw new Error('piet pre-barn promise missing');
               closeMenu(); g.barn=true; Game.talkTo('piet');
               if(!document.getElementById('menu').textContent.includes('west beam')) throw new Error('piet post-barn line missing');
