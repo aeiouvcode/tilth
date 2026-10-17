@@ -722,6 +722,15 @@ async function runAutotest(){
     Game.sleep(false); if(Game.moveSpeed()!==60) throw new Error('exhaustion survived a real sleep');
     } finally { g.indoor=false; g.inCave=false; g.minutes=600; g.energy=100; g.coins=120; } // leave the world the way later steps expect it
   },'collapse wake + cost');
+  step(()=>{ // a collapse still says why in the morning, not just the fee
+    g=Game.G; const oDay=g.day, oW=g.weather, oM=g.minutes, oC=g.coins, oE=g.energy; try{
+      const w=document.getElementById('toast-wrap'); w.innerHTML=''; TOASTQ.length=0;
+      g.coins=100; g.minutes=DAY_END-1; Game.update(1500, Date.now()); // midnight collapse path: pins the cause, then sleeps
+      const txt=[...w.children].map(d=>d.textContent).join('|')+'|'+TOASTQ.map(q=>q.msg).join('|');
+      if(!txt.includes('collapse from the late hour')) throw new Error('collapse cause lost overnight: '+txt);
+      if(!txt.includes('walked you home')) throw new Error('wake fee line missing: '+txt);
+      w.innerHTML=''; TOASTQ.length=0;
+    } finally { g.day=oDay; g.weather=oW; g.minutes=oM; g.coins=oC; g.energy=oE; g.indoor=false; g.inCave=false; } },'collapse cause survives sleep');
   step(()=>{ // toasts: same line never stacks, the rest queue two at a time
     const w=document.getElementById('toast-wrap'); w.innerHTML=''; TOASTQ.length=0;
     toast('dedupe me'); toast('dedupe me');

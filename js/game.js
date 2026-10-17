@@ -787,6 +787,7 @@ const Game={
     for(let l=1;l<=3;l++) this.spawnNodes(l); // the cave shifts overnight
     this.save();
     fadeSleep();
+    if(collapsed) toast('you collapse from the late hour...', true); // the cause rides into the morning with the fee
     if(wakeFee>0) toast('someone walked you home - they took '+wakeFee+'g for the trouble', true);
     else if(wakeFee<0) toast('someone walked you home - they waved off the coin', true);
     if(soldTotal>0) this.showDawnLedgerSoon(soldItems, soldTotal, nextWeather, grew);

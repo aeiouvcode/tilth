@@ -932,7 +932,7 @@ const Render={
     ctx.globalCompositeOperation='source-over';
     if(G.weather==='rain'){ // rain reaches the room: cooler AND dimmer than a sunlit room
       ctx.globalCompositeOperation='multiply';
-      ctx.fillStyle='rgb(196,208,234)'; ctx.fillRect(0,0,cw,ch);
+      ctx.fillStyle='rgb(210,220,238)'; ctx.fillRect(0,0,cw,ch);
       ctx.globalCompositeOperation='source-over';
     }
     // morning reaches through the window: a warm shaft across the floor, peaking 6:00-9:00
