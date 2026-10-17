@@ -1217,6 +1217,16 @@ async function runAutotest(){
             const p=Game.HEART_LINES[id][tier];
             if(!p||p.length<3) throw new Error(id+' '+tier+' pool too small');
             if(new Set(p).size!==p.length) throw new Error(id+' '+tier+' has a duplicate line'); }
+          { // h10 payoff cadence + heart tiers beat winter on cadence days
+            if(!(Game.isFairActive()||Game.festivalEvening())){
+              Game.hearts=()=>10; g.day=5; g.seasonCached=Game.season(); Game.talkTo('bram');
+              let t=document.getElementById('menu').textContent; closeMenu();
+              if(!Game.HEART_LINES.bram.h10.some(l=>t.includes(l.slice(0,24)))) throw new Error('h10 odd day not from h10 pool');
+              Game.hearts=()=>8; Game.talkTo('bram'); t=document.getElementById('menu').textContent; closeMenu();
+              if(Game.HEART_LINES.bram.h8.some(l=>t.includes(l.slice(0,24)))) throw new Error('h8 fired on a h10-only cadence day'); }
+            Game.hearts=()=>6; g.day=23; g.seasonCached=Game.season(); Game.talkTo('fern');
+            const t2=document.getElementById('menu').textContent; closeMenu();
+            if(!Game.HEART_LINES.fern.h6.some(l=>t2.includes(l.slice(0,24)))) throw new Error('winter overrode a heart-tier line'); }
           { // Piet barn promise: pre-build promise, post-build kept-promise
             const kb=g.barn; try{
               Game.hearts=()=>4; g.day=3; g.seasonCached=Game.season();
