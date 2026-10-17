@@ -23,9 +23,11 @@ const TOASTQ=[];
 function toast(msg){
   const w=document.getElementById('toast-wrap');
   if([...w.children].some(d=>d.textContent===msg)||TOASTQ.includes(msg)) return; // the same line never stacks
+  if(TOASTQ.length>=6) TOASTQ.shift(); // bounded: the oldest queued line gives way
   TOASTQ.push(msg); pumpToasts();
 }
 function pumpToasts(){
+  if(MENU_OPEN) return; // cards own the screen; queued toasts wait for the close
   const w=document.getElementById('toast-wrap');
   while(w.children.length<2&&TOASTQ.length){ // two at a time, the rest queue in order
     const d=document.createElement('div'); d.className='toast'; d.textContent=TOASTQ.shift();
@@ -55,7 +57,7 @@ function openMenu(title, rows){
   }
   m.classList.remove('hidden');
 }
-function closeMenu(){ MENU_OPEN=false; document.getElementById('menu').classList.add('hidden'); document.getElementById('menu').classList.remove('table-visit'); document.getElementById('menu-card').classList.remove('paper'); }
+function closeMenu(){ MENU_OPEN=false; document.getElementById('menu').classList.add('hidden'); document.getElementById('menu').classList.remove('table-visit'); document.getElementById('menu-card').classList.remove('paper'); pumpToasts(); }
 
 // ---------- letters ----------
 function openLetter(from, subject, body){
@@ -691,7 +693,7 @@ async function runAutotest(){
     if(!document.getElementById('menu').classList.contains('hidden')) throw new Error('empty crate still opened the ledger');
   },'crate DOM sell flow');
   step(()=>{ // collapse: bed-side wake + reduced energy; normal sleep untouched
-    g=Game.G;
+    g=Game.G; try{
     g.indoor=false; g.inCave=false; g.player.x=40*TILE; g.player.y=20*TILE; g.minutes=DAY_END-1;
     Game.update(1500, Date.now()); // the clock crosses midnight for real
     if(!g.indoor) throw new Error('collapse left the player outdoors');
@@ -700,6 +702,15 @@ async function runAutotest(){
     g.indoor=false; Game.sleep(false);
     if(g.energy!==100) throw new Error('normal sleep stopped restoring fully');
     if(g.indoor) throw new Error('normal sleep relocated the player');
+    g.coins=100; g.minutes=DAY_END-1; Game.update(1500, Date.now()); // midnight collapse: flat floor + fee
+    if(g.energy!==50) throw new Error('midnight collapse off the floor: '+g.energy);
+    if(g.coins!==85) throw new Error('walk-home fee missing at midnight: '+g.coins);
+    g.indoor=false; g.coins=100; g.minutes=1260; g.energy=5; Game.spendEnergy(10); // 21:00 exhaustion fold
+    if(g.energy!==68) throw new Error('collapse energy not scaled by hour: '+g.energy);
+    if(g.coins!==85) throw new Error('walk-home fee missing on exhaustion: '+g.coins);
+    g.indoor=false; g.coins=5; g.energy=5; g.minutes=1260; Game.spendEnergy(10);
+    if(g.coins!==5) throw new Error('fee taken from an empty purse: '+g.coins);
+    } finally { g.indoor=false; g.inCave=false; g.minutes=600; g.energy=100; g.coins=120; } // leave the world the way later steps expect it
   },'collapse wake + cost');
   step(()=>{ // toasts: same line never stacks, the rest queue two at a time
     const w=document.getElementById('toast-wrap'); w.innerHTML=''; TOASTQ.length=0;
@@ -719,6 +730,8 @@ async function runAutotest(){
     const rows=document.querySelectorAll('#menu-items .menu-row');
     if(rows.length!==10) throw new Error('ledger rows uncapped: '+rows.length); // total + today + 6 items + rollup + close
     if(!rows[0].textContent.includes('paid at dawn')) throw new Error('total not pinned first');
+    const topId=Object.keys(ITEMS).slice(0,8).sort((a,b)=>Game.sellPrice(b)-Game.sellPrice(a))[0];
+    if(!rows[2].textContent.includes(ITEMS[topId].name)) throw new Error('ledger not sorted by value: top row is not '+ITEMS[topId].name);
     if(!document.getElementById('menu').textContent.includes('and 2 more')) throw new Error('overflow rollup missing');
     if(!document.getElementById('menu').textContent.includes('today')) throw new Error('forecast row missing');
     closeMenu();
@@ -732,14 +745,36 @@ async function runAutotest(){
     if(![...w.children].some(d=>d.textContent.includes('rain all morning'))&&!TOASTQ.some(t=>t.includes('rain all morning'))) throw new Error('quiet rainy morning stayed silent');
     w.innerHTML=''; TOASTQ.length=0;
   },'rainy morning beat');
+  step(()=>{ // rain grade: dawn rain is cool grey-gold, visibly distinct from night (rendered)
+    g=Game.G; const oi=g.indoor, om=g.minutes, ow=g.weather; g.indoor=false; g.inCave=false; g.weather='rain';
+    const shot=(m)=>{ g.minutes=m; Render.draw(g,1000); const d=Render.ctx.getImageData(0,0,Render.canvas.width,Render.canvas.height).data;
+      let s2=0,r=0,b=0; for(let i=0;i<d.length;i+=4){ s2+=d[i]*0.3+d[i+1]*0.6+d[i+2]*0.1; r+=d[i]; b+=d[i+2]; } const n=d.length/4; return [s2/n, r/n-b/n]; };
+    const dwn=shot(360), ngt=shot(1230);
+    g.weather=ow; g.indoor=oi; g.minutes=om;
+    if(dwn[0]-ngt[0]<10) throw new Error('rain dawn indistinct from night (rendered): '+(dwn[0]-ngt[0]).toFixed(1));
+    if(dwn[1]-ngt[1]<12) throw new Error('rain dawn lost its grey-gold against night (rendered): '+(dwn[1]-ngt[1]).toFixed(1));
+    if(dwn[0]<95) throw new Error('rain dawn went murky (rendered): '+dwn[0].toFixed(1));
+    if(dwn[1]>50) throw new Error('rain dawn too warm - olive murk (rendered): '+dwn[1].toFixed(1)); // 43 blended, 56.8 raw
+  },'rain dawn grade');
+  step(()=>{ // toasts hold while a card owns the screen, then drain on close
+    g=Game.G; const w=document.getElementById('toast-wrap'); w.innerHTML=''; TOASTQ.length=0;
+    g.produce={cloveroot:1}; Game.openCrateMenu();
+    toast('held line');
+    if(w.children.length!==0||!TOASTQ.includes('held line')) throw new Error('toast shown over an open card');
+    closeMenu();
+    if(![...w.children].some(d=>d.textContent==='held line')) throw new Error('held toast lost on close');
+    for(let i=0;i<9;i++) toast('q'+i);
+    if(TOASTQ.length>6) throw new Error('toast queue unbounded: '+TOASTQ.length);
+    w.innerHTML=''; TOASTQ.length=0;
+  },'toast hold + bound');
   step(()=>{ // interior wake: the room's light actually changes with the hour (rendered pixels, full-canvas mean luma)
     g=Game.G; const oi=g.indoor, om=g.minutes; g.indoor=true;
     const shot=(m)=>{ g.minutes=m; Render.draw(g,1000); const d=Render.ctx.getImageData(0,0,Render.canvas.width,Render.canvas.height).data;
       let sum=0; for(let i=0;i<d.length;i+=4) sum+=d[i]*0.3+d[i+1]*0.6+d[i+2]*0.1; return sum/(d.length/4); };
     const dawn=shot(360), night=shot(1230), midday=shot(600);
     g.indoor=oi; g.minutes=om;
-    if(Math.abs(dawn-night)<2) throw new Error('interior no longer wakes with the dawn (rendered)');
-    if(Math.abs(dawn-midday)>25) throw new Error('dawn interior drifted too far from midday');
+    if(dawn-night<7) throw new Error('interior dawn not visibly brighter than night (rendered): '+(dawn-night).toFixed(1)); // 8.5 with the shaft, 6.0 tint-only
+    if(dawn-midday<1||dawn-midday>25) throw new Error('dawn interior must top midday gently (rendered): '+(dawn-midday).toFixed(1));
   },'interior dawn wash');
   step(()=>{ // morning grade: rose dawn lifts to golden morning, noon passes through
     const rgb=m=>(lightTint(m)||'rgb(255,255,255)').match(/\d+/g).map(Number);
@@ -2290,6 +2325,18 @@ async function runAutotest(){
   step(()=>{ // rendering smoke: draw 30 frames with no errors
     for(let i=0;i<30;i++) Render.draw(Game.G, performance.now()+i*33);
   },'render 30 frames');
+  try{ // the dawn ledger lands on the real clock, not the test shortcut
+    window.__TILTH_AUTOTEST=0; Game.dawnLedgerDelay=40;
+    g=Game.G; g.produce={cloveroot:1}; g.pendingSale=0; g.pendingItems={};
+    Game.openCrateMenu(); document.querySelectorAll('#menu-items .menu-row').forEach(r=>r.dispatchEvent(new MouseEvent('click',{bubbles:true})));
+    Game.sleep();
+    if(!document.getElementById('menu').classList.contains('hidden')) throw new Error('ledger skipped the wait under the real clock');
+    await sleep(140);
+    const lm2=document.getElementById('menu');
+    if(lm2.classList.contains('hidden')||!lm2.textContent.includes('the crate went out at dawn')) throw new Error('ledger never landed on the real clock');
+    closeMenu();
+  }catch(e){ fails.push('ledger real clock: '+e.message); console.error('[AUTOTEST-FAIL]','ledger real clock',e); }
+  finally{ Game.dawnLedgerDelay=1250; window.__TILTH_AUTOTEST=1; }
   await sleep(300);
   if(fails.length){ console.log('AUTOTEST RESULT: FAIL', JSON.stringify(fails)); }
   else console.log('AUTOTEST RESULT: PASS');

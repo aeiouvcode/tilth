@@ -708,7 +708,10 @@ const Render={
       ctx.fillStyle=b.c; ctx.fillRect(bx-1,by-1,2,1+Math.round(w));
     }
     // lighting overlay (hour tint + season grade)
-    const tint=lightTint(G.minutes);
+    let tint=lightTint(G.minutes);
+    if(G.weather==='rain'&&tint){ // rain pulls the hour grade toward a cool grey-gold; dawn rain must not go brown-olive
+      const c=tint.match(/\d+/g).map(Number);
+      tint=`rgb(${Math.round(lerp(c[0],206,0.5))},${Math.round(lerp(c[1],208,0.5))},${Math.round(lerp(c[2],198,0.5))})`; }
     const SEASON_GRADE=[null,'#eef0d0','#ecd0a0','#ccdcec'];
     const sg=SEASON_GRADE[G.seasonCached||0];
     if(tint||sg){
@@ -923,6 +926,21 @@ const Render={
     ctx.globalCompositeOperation='multiply';
     ctx.fillStyle=interiorTint(G.minutes); ctx.fillRect(0,0,cw,ch);
     ctx.globalCompositeOperation='source-over';
+    // morning reaches through the window: a warm shaft across the floor, peaking 6:00-9:00
+    const sa=G.minutes<330||G.minutes>=600?0: G.minutes<360?(G.minutes-330)/30 : G.minutes<540?1 : (600-G.minutes)/60;
+    if(sa>0){
+      const x0=4*TILE-camX+4, x1=5*TILE-camX+30, yTop=12-camY;
+      ctx.save(); ctx.globalAlpha=sa;
+      ctx.globalCompositeOperation='screen';
+      const gr=ctx.createLinearGradient(0,yTop,0,5.6*TILE-camY);
+      gr.addColorStop(0,'rgba(255,224,166,0.55)'); gr.addColorStop(1,'rgba(255,214,150,0)');
+      ctx.fillStyle=gr;
+      ctx.beginPath(); ctx.moveTo(x0,yTop); ctx.lineTo(x1,yTop); ctx.lineTo(x1+52,5.6*TILE-camY); ctx.lineTo(x0+14,5.6*TILE-camY); ctx.closePath(); ctx.fill();
+      const pool=ctx.createRadialGradient(x1+18,4.6*TILE-camY,4, x1+18,4.6*TILE-camY,52);
+      pool.addColorStop(0,'rgba(255,220,155,0.34)'); pool.addColorStop(1,'rgba(255,220,155,0)');
+      ctx.fillStyle=pool; ctx.beginPath(); ctx.ellipse(x1+18,4.6*TILE-camY,52,20,0,0,7); ctx.fill();
+      ctx.restore();
+    }
     const vg=ctx.createRadialGradient(cw/2,ch/2,Math.min(cw,ch)*0.35,cw/2,ch/2,Math.max(cw,ch)*0.75);
     vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(20,12,8,0.35)');
     ctx.fillStyle=vg; ctx.fillRect(0,0,cw,ch);
@@ -1092,7 +1110,7 @@ function facingTile(p){
 }
 function interiorTint(min){
   // lamplit constant with a morning lift: midday equals the old fixed #f2dfc8, dawn opens brighter, night settles warm-dim
-  const stops=[ [0,'#e2c9a8'],[300,'#e2c9a8'],[345,'#f8e6c6'],[450,'#f2dfc8'],[1020,'#f2dfc8'],[1170,'#ecd2b0'],[1230,'#e2c9a8'],[1440,'#e2c9a8'] ];
+  const stops=[ [0,'#e2c9a8'],[300,'#e2c9a8'],[345,'#fdf0d8'],[450,'#f2dfc8'],[1020,'#f2dfc8'],[1170,'#ecd2b0'],[1230,'#e2c9a8'],[1440,'#e2c9a8'] ];
   let a=stops[0], b=stops[stops.length-1];
   for(let i=0;i<stops.length-1;i++){ if(min>=stops[i][0]&&min<=stops[i+1][0]){ a=stops[i]; b=stops[i+1]; break; } }
   const t=(min-a[0])/Math.max(1,(b[0]-a[0]));

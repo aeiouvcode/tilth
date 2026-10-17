@@ -292,7 +292,7 @@ const Game={
   // ---------- actions ----------
   tileAt(x,y){ return this.G.grid[y*W+x]; },
   cropAt(x,y){ return this.G.crops.get(y*W+x); },
-  spendEnergy(n){ const g=this.G; g.energy=Math.max(0,g.energy-n); if(g.energy<=0) toast('exhausted - sleep to recover'); },
+  spendEnergy(n){ const g=this.G; g.energy=Math.max(0,g.energy-n); if(g.energy<=0&&!g.collapsing){ g.collapsing=true; toast('you push past empty and fold...'); this.sleep(true); } },
 
   useTool(){
     const g=this.G;
@@ -713,13 +713,13 @@ const Game={
 
   showDawnLedgerSoon(items, total, weather){
     if(window.__TILTH_AUTOTEST){ this.showDawnLedger(items, total, weather); return; }
-    setTimeout(()=>this.showDawnLedger(items, total, weather), 1250); // the card lands as the fade lifts, not behind it
+    setTimeout(()=>this.showDawnLedger(items, total, weather), this.dawnLedgerDelay??1250); // the card lands as the fade lifts, not behind it
   },
   showDawnLedger(items, total, weather){
     const g=this.G;
     const rows=[{label:'paid at dawn', desc:'the crate by your door', price:'+'+total+'g', pick:()=>{}}];
     rows.push({label:'today', desc:weather==='rain'?'rain — the fields water themselves':'clear skies', price:'', pick:()=>{}});
-    for(const [id,v] of items.slice(0,6)) rows.push({ label:ITEMS[id].name, desc:'shipped x'+v.n, price:v.val+'g',
+    for(const [id,v] of items.slice().sort((a,b)=>b[1].val-a[1].val).slice(0,6)) rows.push({ label:ITEMS[id].name, desc:'shipped x'+v.n, price:v.val+'g',
       icon:SPR.item[id]||SPR.forage[id]||(CROPS[id]?SPR.crop(CROPS[id],3):null), pick:()=>{} });
     if(items.length>6) rows.push({label:'and '+(items.length-6)+' more', desc:'counted and paid', price:'', pick:()=>{}});
     rows.push({label:'close', desc:'', price:'', pick:()=>closeMenu()});
@@ -746,8 +746,14 @@ const Game={
     const soldTotal=g.pendingSale, soldItems=Object.entries(g.pendingItems||{}).filter(([id,v])=>v&&v.n>0);
     if(soldTotal>0){ g.coins+=soldTotal; g.lifetimeEarned+=soldTotal; g.pendingSale=0; }
     g.pendingItems={};
-    g.day++; g.minutes=DAY_START; g.energy=collapsed?50:100; g.giftsToday={};
-    if(collapsed){ g.indoor=true; g.inCave=false; g.player.x=3.5*TILE; g.player.y=2.5*TILE; g.player.dir='down'; }
+    let wakeFee=0;
+    if(collapsed){ // the later you fold, the worse the morning: 50 at midnight, up to 85 for an early evening fold
+      const restH=Math.max(0,(DAY_END-Math.min(g.minutes,DAY_END))/60);
+      g.energy=Math.min(85,50+Math.round(restH*6));
+      if(g.coins>=15){ g.coins-=15; wakeFee=15; }
+      g.indoor=true; g.inCave=false; g.player.x=3.5*TILE; g.player.y=2.5*TILE; g.player.dir='down';
+    } else g.energy=100;
+    g.day++; g.minutes=DAY_START; g.collapsing=false; g.giftsToday={};
     if(g.fieldSeasonPending>=0){ if(this.seasonOf(g.day-1)===g.fieldSeasonPending&&!g.fieldSeasons.includes(g.fieldSeasonPending))g.fieldSeasons.push(g.fieldSeasonPending);g.fieldSeasonPending=-1; }
     g.forage.clear(); this.spawnForage(2+Math.floor(Math.random()*3));
     this.layEggs();
@@ -770,6 +776,7 @@ const Game={
     for(let l=1;l<=3;l++) this.spawnNodes(l); // the cave shifts overnight
     this.save();
     fadeSleep();
+    if(wakeFee) toast('someone walked you home - they took '+wakeFee+'g for the trouble');
     if(soldTotal>0) this.showDawnLedgerSoon(soldItems, soldTotal, nextWeather);
     else if(nextWeather==='rain') toast('rain all morning — the fields water themselves');
   },
